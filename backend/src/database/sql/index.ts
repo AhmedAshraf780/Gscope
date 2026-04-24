@@ -30,44 +30,73 @@ export class SqlDataStore implements Datastore {
   }
 
   async createCompany(company: Company): Promise<number | undefined> {
-    const result = await this.db.run(
-      `INSERT INTO companies (name, email, phone, created_at, updated_at)
+    try {
+      const result = await this.db.run(
+        `INSERT INTO companies (name, email, phone, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?)`,
-      [company.name, company.email, company.phone, company.created_at, company.updated_at]
-    );
-    return result.lastID;
+        [company.name, company.email, company.phone, company.created_at, company.updated_at]
+      );
+      return result.lastID;
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
   }
 
   async getCompanyById(id: number): Promise<Company | null> {
-    const row = await this.db.get(
-      `SELECT * FROM companies WHERE id = ?`,
-      [id]
-    );
-    return row || null;
+    try {
+      const row = await this.db.get(
+        `SELECT * FROM companies WHERE id = ?`,
+        [id]
+      );
+      return row || null;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
   }
   async getCompanyByEmail(email: string): Promise<Company | null> {
-    const row = await this.db.get(
-      `SELECT * FROM companies WHERE email = ?`,
-      [email]
-    );
-    return row || null;
+    try {
+
+      const row = await this.db.get(
+        `SELECT * FROM companies WHERE email = ?`,
+        [email]
+      );
+      return row || null;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
   }
 
   async getAllCompanies(): Promise<Company[]> {
-    return await this.db.all(`SELECT * FROM companies`);
+    try {
+      return await this.db.all(`SELECT * FROM companies`);
+    } catch (error) {
+      console.log(error);
+      return [];
+    }
   }
 
   async updateCompany(id: number, company: Company): Promise<void> {
-    await this.db.run(
-      `UPDATE companies 
+    try {
+      await this.db.run(
+        `UPDATE companies 
             SET name = ?, email = ?, phone = ?, updated_at = ?
             WHERE id = ?`,
-      [company.name, company.email, company.phone, company.updated_at, id]
-    );
+        [company.name, company.email, company.phone, company.updated_at, id]
+      );
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   async deleteCompanyById(id: number): Promise<void> {
-    await this.db.run(`DELETE FROM companies WHERE id = ?`, [id]);
+    try {
+      await this.db.run(`DELETE FROM companies WHERE id = ?`, [id]);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
 }
