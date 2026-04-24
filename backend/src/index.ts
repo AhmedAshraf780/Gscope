@@ -3,12 +3,12 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
 import config from './config/config';
-import { initDB } from './database';
+import { db, initDB } from './database';
 
 const app = express();
 
 app.use(cors({
-  origin: '*',
+    origin: '*',
 }));
 
 
@@ -17,13 +17,13 @@ app.use(express.json());
 
 // test route
 app.get('/', (req: Request, res: Response) => {
-  console.log(req);
-  console.log(res);
-  res.send('Server is running 🚀');
+    console.log(req);
+    console.log(res);
+    res.send('Server is running 🚀');
 });
 
 // start server
 app.listen(config.port, async () => {
-  await initDB(__dirname + '/database/database.db');
-  console.log(`Server running on http://localhost:${config.port}`);
+    await initDB(__dirname + '/database/database.db');
+    console.log(`Server running on http://localhost:${config.port}`);
 });
