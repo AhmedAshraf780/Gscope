@@ -1,10 +1,13 @@
 import Router, { Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import config from "../config/config";
-// import { generateOTP, sendOTPEmail } from "../utils/otp";
 import { redisClient } from "../config/redis";
-import { createUserRequest, createUserResponse, restorePasswordRequest, restorePasswordResponse, loginRequest, signInResponse } from "./../../../shared/auth.types.ts"
+import { createUserRequest, createUserResponse, restorePasswordRequest, restorePasswordResponse, loginRequest, signInResponse, validateOtpResponse, validateOtpRequest, forgotPasswordRequest, sendOtpResponse } from "./../../../shared/auth.types"
 import { generateOTP, sendOTPEmail } from "../utils/otp";
+import { db } from "../database";
+import { Company } from "../database/DAOs/companyDao";
+import { v4 as uuidv4 } from 'uuid';
 
 const authRouter = Router();
 
@@ -13,8 +16,8 @@ const authRouter = Router();
  * @swagger
  * /api/v1/auth/signin:
  *   post:
- *     summary: Validate user credentials
- *     description: Returns the user data if the credentials are valid
+ *     summary: Validate gym credentials
+ *     description: Returns the gym data if the credentials are valid
  *     requestBody:
  *       required: true
  *       content:
@@ -52,12 +55,35 @@ authRouter.post("/signin", async (req: Request<{}, {}, loginRequest>, res: Respo
 
     // validate the fields ( types , min length, max length, etc)
     if (!email || !password) {
-      res.status(401).json({ message: "Invalid credentials", ok: false });
-      return;
+      return res.status(401).json({ message: "Invalid credentials", ok: false });
     }
 
+    // check if gym is already exists
+    const gym: Company | null = await db.getCompanyByEmail(email);
+    if (!gym) {
+      return res.status(401).json({ message: "Invalid credentials", ok: false });
+    }
+
+    // validate the password
+    const ok = bcrypt.compare(password, gym.password);
+    if (!ok) {
+      return res.status(401).json({ message: "Invalid credentials", ok: false });
+    }
+
+    // create jsonwebtoken
+    const token = jwt.sign({ email }, config.jwt_secret, { expiresIn: "1h" });
+
+    res.cookie(config.auth_token, token, {
+      secure: true,
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 3600 * 1000
+    });
 
     return res.status(200).json({
+      message: "Gym found, login successful",
+      gym_id: gym.id,
+      name: gym.name,
       ok: true,
     });
   } catch (err) {
@@ -101,25 +127,23 @@ authRouter.post("/signin", async (req: Request<{}, {}, loginRequest>, res: Respo
 authRouter.post("/signup", async (req: Request<{}, {}, createUserRequest>, res: Response<createUserResponse>) => {
   try {
     // parse the request body
-    const { username, email, password, phone } = req.body;
+    const { name, email, password, phone } = req.body;
 
 
     // validate the fields ( types , min length, max length, etc)
-    if (!username || !email || !password || !phone) {
-      res.status(401).json({ ok: false, message: "Invalid credentials" });
-      return;
+    if (!name || !email || !password || !phone) {
+      return res.status(401).json({ ok: false, message: "Invalid credentials" });
     }
     // check if the user exists
-    const exists = null;
+    const exists = await db.getCompanyByEmail(email);
     if (exists) {
-      res.status(401).json({ ok: false, message: "User already exists" });
-      return;
+      return res.status(401).json({ ok: false, message: "Gym already exists" });
     }
 
     // create the user
     const otp = generateOTP();
-    const newUser = {
-      username,
+    const newGym = {
+      name,
       email,
       password,
       phone,
@@ -128,7 +152,7 @@ authRouter.post("/signup", async (req: Request<{}, {}, createUserRequest>, res: 
       forgotPassword: false,
     };
 
-    console.log(newUser);
+    console.log(newGym);
 
     // we need to json otp code to the user's email and save the user in the redis
     // until we verify the otp code
@@ -138,8 +162,8 @@ authRouter.post("/signup", async (req: Request<{}, {}, createUserRequest>, res: 
     }
 
     // save the user in redis
-    const redisSession = uuid();
-    await redisClient.set(redisSession, JSON.stringify(newUser));
+    const redisSession = uuidv4();
+    await redisClient.set(redisSession, JSON.stringify(newGym));
     return res.status(201).json({ ok: true, message: "OTP sent to user's email", session: redisSession });
   } catch (err) {
     console.log(err);
@@ -175,36 +199,34 @@ authRouter.post("/signup", async (req: Request<{}, {}, createUserRequest>, res: 
  *         description: user not found
  */
 authRouter.post("/forgotpassword", async (req: Request<{}, {}, forgotPasswordRequest>, res: Response<sendOtpResponse>) => {
-
   try {
     const { email } = req.body;
     if (!email) {
       return res.status(401).json({ ok: false, message: "Invalid credentials" });
     }
-    const user = await getUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ ok: false, message: "User not found" });
+    const gym = await db.getCompanyByEmail(email);
+    if (!gym) {
+      return res.status(401).json({ ok: false, message: "Gym not found" });
     }
     const otp = generateOTP();
     const sent = await sendOTPEmail(email, otp);
     if (!sent) {
       return res.status(500).json({ ok: false, message: "Error sending OTP" });
     }
-    const userData = {
-      username: user.username,
-      email: user.email,
-      password: user.password,
-      phone: user.phone,
+    const gymData = {
+      name: gym.name,
+      email: gym.email,
+      password: gym.password,
+      phone: gym.phone,
       otp: otp,
       otpSent: false,
       forgotPassword: true,
     };
 
-    const redisSession = uuid();
-    await redisClient.set(redisSession, JSON.stringify(userData));
+    const redisSession = uuidv4();
+    await redisClient.set(redisSession, JSON.stringify(gymData));
 
     return res.status(200).json({ ok: true, message: "OTP sent to user's email", session: redisSession });
-
   } catch (err) {
     console.log(err);
     return res.status(500).json({ ok: false, message: "Error saving user in redis" });
@@ -247,19 +269,19 @@ authRouter.post("/restorepassword", async (req: Request<{}, {}, restorePasswordR
       return res.status(401).json({ ok: false, message: "Passwords do not match" });
     }
 
-    const user = await redisClient.get(session);
-    if (!user) {
+    const gym = await redisClient.get(session);
+    if (!gym) {
       return res.status(401).json({ ok: false, message: "session not found" });
     }
 
 
 
-    const userData = JSON.parse(user);
+    const gymData = JSON.parse(gym);
 
-    if (!userData.otpSent) {
+    if (!gymData.otpSent) {
       return res.status(401).json({ ok: false, message: "OTP missed" });
     }
-    const ok = await updateUserPassword(userData.email, password);
+    const ok = await db.updateCompanyPassword(gymData.email, password);
     if (!ok) {
       return res.status(401).json({ ok: false, message: "Something went wrong" });
     }
@@ -301,31 +323,39 @@ authRouter.post("/restorepassword", async (req: Request<{}, {}, restorePasswordR
 authRouter.post("/validateotp", async (req: Request<{}, {}, validateOtpRequest>, res: Response<validateOtpResponse>) => {
   const { session, otp } = req.body;
   try {
-    const user = await redisClient.get(session);
-    if (!user) {
+    const gym = await redisClient.get(session);
+    if (!gym) {
       return res.status(401).json({ ok: false, message: "session not found" });
     }
-    const userData = JSON.parse(user);
-    if (userData.otp !== otp) {
+    const gymData = JSON.parse(gym);
+    if (gymData.otp !== otp) {
       return res.status(401).json({ ok: false, message: "Invalid OTP" });
     }
 
-    if (userData.forgotPassword) {
-      userData.otpSent = true;
-      await redisClient.set(session, JSON.stringify(userData));
-      return res.status(200).json({ ok: true, message: "OTP is correct", forgotPassword: userData.forgotPassword, session: session });
+    if (gymData.forgotPassword) {
+      gymData.otpSent = true;
+      await redisClient.set(session, JSON.stringify(gymData));
+      return res.status(200).json({ ok: true, message: "OTP is correct", forgotPassword: gymData.forgotPassword, session: session });
     }
 
-    // otp is correct, delete the otp from redis
-    const u: Pick<User, "username" | "email" | "password" | "phone"> = {
-      username: userData.username, email: userData.email,
-      password: userData.password,
-      phone: userData.phone,
+    // TODO: MOVE SALT TO ENV 
+    const hashedPassword = bcrypt.hashSync(gymData.password, 10);
+    const g: Company = {
+      name: gymData.name,
+      email: gymData.email,
+      password: hashedPassword,
+      phone: gymData.phone,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }
 
-    await createUser(u);
+    const ok = await db.createCompany(g);
+    if (!ok) {
+      return res.status(500).json({ ok: false, message: "Error creating gym" });
+    }
+
     await redisClient.del(session);
-    return res.status(200).json({ ok: true, message: "OTP is correct", forgotPassword: userData.forgotPassword });
+    return res.status(200).json({ ok: true, message: "OTP is correct", forgotPassword: gymData.forgotPassword });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ ok: false, message: "Error validating OTP" });
@@ -359,16 +389,16 @@ authRouter.post("/resendotp", async (req, res) => {
     }
 
     // we are now in the resend case
-    const userData = JSON.parse(user);
-    userData.otp = otp;
+    const gymData = JSON.parse(user);
+    gymData.otp = otp;
 
     // json the otp to the user's email
-    const sent = await sendOTPEmail(userData.email, otp);
+    const sent = await sendOTPEmail(gymData.email, otp);
     if (!sent) {
       return res.status(500).json({ message: "Error sending OTP" });
     }
 
-    await redisClient.set(session, JSON.stringify(userData));
+    await redisClient.set(session, JSON.stringify(gymData));
     return res.status(200).json({ message: "OTP is resent" });
   } catch (err) {
     console.log(err);

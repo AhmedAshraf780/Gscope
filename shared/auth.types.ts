@@ -4,7 +4,7 @@
  * */
 
 export type createUserRequest = {
-  username: string;
+  name: string;
   password: string;
   email: string;
   phone: string;
@@ -51,10 +51,9 @@ export type sendOtpResponse = {
 
 export type signInResponse = {
   ok: boolean;
-  message?: string;
-  userId?: number;
-  username?: string;
-  email?: string;
+  message: string;
+  gym_id?: number;
+  name?: string;
 };
 
 export type forgotPasswordResponse = {

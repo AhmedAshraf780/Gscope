@@ -30,7 +30,14 @@ export class SqlDataStore implements Datastore {
     return this;
   }
 
-  //COMPANY DAO IMPLEMENTATION
+  /*==========================================================================
+   *
+   *
+   *             GYM DAO IMPLEMENTATION ( START )
+   *
+   *=======================================================================
+   */
+
 
   async createCompany(company: Company): Promise<number | undefined> {
     try {
@@ -102,7 +109,38 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-  //MEMBER DAO IMPLEMENTATION
+  async updateCompanyPassword(email: string, password: string): Promise<boolean> {
+    try {
+      await this.db.run(
+        `UPDATE companies 
+            SET password = ?
+            WHERE email = ?`,
+        [password, email]
+      );
+      return true;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
+
+  /*==========================================================================
+   *
+   *
+   *             GYM DAO IMPLEMENTATION  (END)
+   *
+   *=======================================================================
+   */
+
+
+
+  /*==========================================================================
+   *
+   *
+   *             MEMBER DAO IMPLEMENTATION  ( START )
+   *
+   *=======================================================================
+   */
   async deleteMember(id: number): Promise<boolean> {
     try {
       await this.db.run(`DELETE FROM members WHERE id = ?`, [id]);
@@ -210,8 +248,13 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
-
+  /*==========================================================================
+   *
+   *
+   *             MEMBER DAO IMPLEMENTATION  ( END )
+   *
+   *=======================================================================
+   */
 }
 
 

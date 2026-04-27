@@ -7,6 +7,7 @@ const config = {
   redis_host: process.env.REDIS_HOST as string,
   redis_username: process.env.REDIS_USERNAME as string,
   redis_port: Number(process.env.REDIS_PORT),
+  auth_token: process.env.AUTH_TOKEN as string,
 };
 
 export default config;
