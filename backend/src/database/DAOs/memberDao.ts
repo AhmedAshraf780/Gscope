@@ -1,5 +1,5 @@
 export interface Member {
-    id: number;
+    id?: number;
     name: string;
     phone: string;
     months: number;
@@ -11,7 +11,7 @@ export interface Member {
 }
 
 export interface Session {
-    id: number;
+    id?: number;
     session_date: string;
     session_type: "gym" | "football" | "else";
     price: number;
