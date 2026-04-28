@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS attendance_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id INTEGER NOT NULL,
+    check_in_time TEXT NOT NULL,
+    gym_id INTEGER NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+    FOREIGN KEY (gym_id) REFERENCES companies(id) ON DELETE CASCADE
+);

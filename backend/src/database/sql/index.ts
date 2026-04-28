@@ -5,6 +5,8 @@ import sqlite3 from 'sqlite3';
 import { Datastore } from '..';
 import { Company } from '../DAOs/companyDao';
 import { Member, Session } from '../DAOs/memberDao';
+import { attendance_logs } from '../DAOs/logsDao';
+import { LastAttendance } from '../DAOs/logsDao';
 
 export class SqlDataStore implements Datastore {
   private db!: Database<sqlite3.Database, sqlite3.Statement>;
@@ -247,18 +249,78 @@ export class SqlDataStore implements Datastore {
       return [];
     }
   }
+  async createLog(member_id: number, gym_id: number): Promise<number | undefined> {
+    try {
+      const result = await this.db.run(
+        `INSERT INTO attendance_logs (member_id, check_in_time, gym_id)
+            VALUES (?, ?, ?)`,
+        [member_id, new Date().toISOString(), gym_id]
+      );
+      return result.lastID;
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
+  }
 
-  /*==========================================================================
-   *
-   *
-   *             MEMBER DAO IMPLEMENTATION  ( END )
-   *
-   *=======================================================================
-   */
+  async getLogsByMemberId(member_id: number): Promise<attendance_logs[]> {
+    try {
+      return await this.db.all(`SELECT * FROM attendance_logs WHERE member_id = ?`, [member_id]);
+    } catch (error) {
+      console.log(error);
+      return [];
+    }
+  }
+
+  async getLastCheckIn(member_id: number): Promise<attendance_logs | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT * FROM attendance_logs WHERE member_id = ? ORDER BY check_in_time DESC LIMIT 1`,
+        [member_id]
+      );
+      return row || null;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+  async getLastAttendanceWithDuration(memberId: number): Promise<LastAttendance> {
+    const row = await this.db.get(
+      `SELECT MAX(check_in_time) as last_attendance
+     FROM attendance_logs
+     WHERE member_id = ?`,
+      [memberId]
+    );
+
+    if (!row || !row.last_attendance) {
+      return {
+        last_attendance: null,
+        duration_in_days: null
+      };
+    }
+
+    const lastDate = new Date(row.last_attendance);
+    const now = new Date();
+
+    const diffMs = now.getTime() - lastDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    return {
+      last_attendance: row.last_attendance,
+      duration_in_days: diffDays
+    };
+  }
+
+
+  async getAllLogsByGym(gym_id: number): Promise<attendance_logs[]> {
+    try {
+      return await this.db.all(`SELECT * FROM attendance_logs WHERE gym_id = ?`, [gym_id]);
+    } catch (error) {
+      console.log(error);
+      return [];
+    }
+  }
 }
-
-
-
-
-
 
