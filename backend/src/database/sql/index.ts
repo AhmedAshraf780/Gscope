@@ -44,9 +44,9 @@ export class SqlDataStore implements Datastore {
   async createCompany(company: Company): Promise<number | undefined> {
     try {
       const result = await this.db.run(
-        `INSERT INTO companies (name, email, phone, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)`,
-        [company.name, company.email, company.phone, company.created_at, company.updated_at]
+        `INSERT INTO companies (name, email, phone,password ,created_at, updated_at)
+            VALUES (?, ?, ?,?, ?, ?)`,
+        [company.name, company.email, company.phone, company.password, company.created_at, company.updated_at]
       );
       return result.lastID;
     } catch (error) {
