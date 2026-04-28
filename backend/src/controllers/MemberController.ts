@@ -3,7 +3,7 @@ import { db } from '../database';
 import { Member, Session } from '../database/DAOs/memberDao';
 
 
-export const addMember = (req: Request, res: Response) => {
+export const addMember = async (req: Request, res: Response) => {
     try {
         const { name, phone, months, price, start_date, end_date, notes } = req.body;
         const { gym_id } = req.params;
@@ -39,7 +39,7 @@ export const addMember = (req: Request, res: Response) => {
             notes: notes,
         }
 
-        db.addMember(member, Number(gym_id));
+        await db.addMember(member, Number(gym_id));
 
 
         return res.status(201).json({ message: "Member added successfully" });
@@ -47,31 +47,34 @@ export const addMember = (req: Request, res: Response) => {
 
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
-export const deleteMember = (req: Request, res: Response) => {
+export const deleteMember = async (req: Request, res: Response) => {
     try {
 
-        const { id } = req.body;
+        const { id } = req.params;
 
-        if (!id || isNaN(id)) {
+
+        if (!id || isNaN(Number(id))) {
             return res.status(400).json({ message: "Member ID is required" });
         }
 
-        db.deleteMember(id);
+        await db.deleteMember(Number(id));
 
         return res.status(200).json({ message: "Member deleted successfully" });
 
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
-export const updateMember = (req: Request, res: Response) => {
+export const updateMember = async (req: Request, res: Response) => {
     try {
-        const { id, months, price } = req.body;
-
+        const { months, price } = req.body;
+        const { id } = req.params;
         if (!id || !months || !price) {
             return res.status(400).json({ message: "Member ID, months, and price are required" });
         }
@@ -81,57 +84,65 @@ export const updateMember = (req: Request, res: Response) => {
         if (price <= 0 || isNaN(price)) {
             return res.status(400).json({ message: "invalid price" });
         }
-        db.updateMember(id, months, price);
+        await db.updateMember(Number(id), months, price);
         return res.status(200).json({ message: "Member updated successfully" });
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
 
 
-export const getMemberById = (req: Request, res: Response) => {
+export const getMemberById = async (req: Request, res: Response) => {
     try {
-        const { id } = req.body;
-        if (!id || isNaN(id)) {
+        const { id } = req.params;
+        if (!id || isNaN(Number(id))) {
             return res.status(400).json({ message: "member id is required" })
         }
-        const member = db.getMemberById(id);
-        return res.status(200).json(member);
+        const member = await db.getMemberById(Number(id));
+        return res.status(200).json({ member });
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
-export const getMemberByName = (req: Request, res: Response) => {
+export const getMemberByName = async (req: Request, res: Response) => {
     try {
-        const { name } = req.body;
+        const { name } = req.query;
         if (!name || typeof name !== 'string') {
             return res.status(400).json({ message: "member name is required" })
         }
-        const member = db.getMemberByName(name);
+        const member = await db.getMemberByName(name);
+        if (!member) {
+            return res.status(404).json({ message: "Member not found" });
+        }
         return res.status(200).json(member);
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
-export const listMembersOfGym = (req: Request, res: Response) => {
+export const listMembersOfGym = async (req: Request, res: Response) => {
     try {
-        const { gym_id } = req.body;
-        if (!gym_id || isNaN(gym_id)) {
+        const { gym_id } = req.params;
+        if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
         }
-        const members = db.listMembersOfGym(gym_id);
+        const members = await db.listMembersOfGym(Number(gym_id));
         return res.status(200).json(members);
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
-export const addSession = (req: Request, res: Response) => {
+export const addSession = async (req: Request, res: Response) => {
     try {
-        const { gym_id, session_date, session_type, price, member_name } = req.body;
+        const { session_date, session_type, price, member_name } = req.body;
+        const { gym_id } = req.params;
 
         const session: Session = {
             session_date: session_date,
@@ -140,7 +151,7 @@ export const addSession = (req: Request, res: Response) => {
             member_name: member_name,
         }
 
-        if (!gym_id || isNaN(gym_id)) {
+        if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "invalide gym id" })
         }
         if (!session_date) {
@@ -163,17 +174,19 @@ export const addSession = (req: Request, res: Response) => {
         }
 
 
-        db.addSession(session, gym_id);
+        await db.addSession(session, Number(gym_id));
         return res.status(200).json({ message: "Session added successfully" });
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 
-export const listSessions = (req: Request, res: Response) => {
+export const listSessions = async (req: Request, res: Response) => {
     try {
-        const { type, gym_id } = req.body;
-        if (!gym_id || isNaN(gym_id)) {
+        const { type } = req.body;
+        const { gym_id } = req.params;
+        if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "invalide gym id" })
         }
         if (!type || typeof type !== 'string') {
@@ -182,10 +195,11 @@ export const listSessions = (req: Request, res: Response) => {
         if (!['gym', 'football', 'swimming'].includes(type.toLowerCase())) {
             return res.status(400).json({ message: "invalid session type" })
         }
-        const sessions = db.listSessions(type, gym_id);
+        const sessions = await db.listSessions(type, Number(gym_id));
         return res.status(200).json(sessions);
     } catch (error) {
         console.log(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 }
 

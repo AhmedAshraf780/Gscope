@@ -8,8 +8,10 @@ import { db, initDB } from './database';
 import { swaggerSpec } from './config/swagger';
 import memberRouter from './routes/member.routes';
 import authRouter from './routes/auth.routes';
+
 import logsRouter from './routes/logs.routes';
 import companyRouter from './routes/company.routes';
+
 //import { connectRedis } from './config/redis';
 
 const app = express();
@@ -38,10 +40,11 @@ app.use("/api/v1/auth", authRouter)
 // start server
 app.listen(config.port, async () => {
   await initDB(__dirname + '/database/database.db');
+
   //  await connectRedis();
   console.log(`Server running on http://localhost:${config.port}`);
   await initDB(__dirname + '/database/database.db');
   console.log(await db.getLastAttendanceWithDuration(3));
-
+  //await connectRedis();
   console.log(`Server running on http://localhost:${config.port}`);
 });

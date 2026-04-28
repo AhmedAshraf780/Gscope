@@ -169,8 +169,8 @@ export class SqlDataStore implements Datastore {
   async getMemberByName(name: string): Promise<Member | null> {
     try {
       const row = await this.db.get(
-        `SELECT * FROM members WHERE name = ?`,// TODO: filter names 
-        [name]
+        `SELECT * FROM members WHERE LOWER(name) = LOWER(?)`,// TODO: filter names 
+        [name.trim()]
       );
       return row || null;
     } catch (e) {
@@ -195,7 +195,7 @@ export class SqlDataStore implements Datastore {
     try {
       const now = new Date();
 
-      // format: YYYY-M-D
+
       const formatDate = (date: Date) =>
         `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
