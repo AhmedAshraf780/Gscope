@@ -1,6 +1,6 @@
 import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { extractNestedRecord } from '../auth/authStorage'
+import { extractNestedRecord, getResponseMessage, isResponseSuccess } from '../auth/authStorage'
 import { memberService } from '../services/member.service'
 import { offersService } from '../services/offers.service'
 import { useAuth } from '../auth/useAuth'
@@ -216,6 +216,12 @@ export function DashboardPage() {
   const [offersError, setOffersError] = useState('')
   const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([])
   const [profileMembersError, setProfileMembersError] = useState('')
+  const [createError, setCreateError] = useState('')
+  const [createSuccess, setCreateSuccess] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [updateError, setUpdateError] = useState('')
+  const [updateSuccess, setUpdateSuccess] = useState('')
+  const [isUpdating, setIsUpdating] = useState(false)
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
@@ -263,6 +269,89 @@ export function DashboardPage() {
   const activeCount = members.filter((member) => member.status === 'Active').length
   const expiringCount = members.filter((member) => member.status !== 'Active').length
   const totalSessionsLeft = members.reduce((sum, member) => sum + member.sessionsLeft, 0)
+
+  const loadProfileMembers = async () => {
+    setProfileMembersError('')
+    const response = await memberService.getMembers(1)
+
+    const records = (() => {
+      if (Array.isArray(response)) {
+        return response
+      }
+
+      const nested = extractNestedRecord(response)
+      if (nested && Array.isArray(nested.members)) {
+        return nested.members
+      }
+
+      if (
+        response &&
+        typeof response === 'object' &&
+        Array.isArray((response as { members?: unknown }).members)
+      ) {
+        return (response as { members: unknown[] }).members
+      }
+
+      if (
+        response &&
+        typeof response === 'object' &&
+        Array.isArray((response as { data?: unknown }).data)
+      ) {
+        return (response as { data: unknown[] }).data
+      }
+
+      return []
+    })()
+
+    const nextMembers = records
+      .map((item, index) => {
+        if (!item || typeof item !== 'object') {
+          return null
+        }
+
+        const candidate = item as Record<string, unknown>
+        return {
+          id:
+            typeof candidate.id === 'string'
+              ? candidate.id
+              : typeof candidate.id === 'number'
+                ? String(candidate.id)
+                : typeof candidate._id === 'string'
+                  ? candidate._id
+                  : typeof candidate._id === 'number'
+                    ? String(candidate._id)
+                    : `member-${index}`,
+          name: typeof candidate.name === 'string' ? candidate.name : '',
+          phone: typeof candidate.phone === 'string' ? candidate.phone : '',
+          months:
+            typeof candidate.months === 'string'
+              ? candidate.months
+              : typeof candidate.months === 'number'
+                ? String(candidate.months)
+                : '',
+          amount:
+            typeof candidate.amount === 'string'
+              ? candidate.amount
+              : typeof candidate.amount === 'number'
+                ? String(candidate.amount)
+                : typeof candidate.price === 'string'
+                  ? candidate.price
+                  : typeof candidate.price === 'number'
+                    ? String(candidate.price)
+                    : '',
+          startDate: typeof candidate.start_date === 'string' ? candidate.start_date : '',
+          endDate: typeof candidate.end_date === 'string' ? candidate.end_date : '',
+          notes: typeof candidate.notes === 'string' ? candidate.notes : '',
+        }
+      })
+      .filter((item): item is ProfileMember => item !== null)
+
+    setProfileMembers(nextMembers)
+
+    if (!nextMembers.length) {
+      setProfileMembersError('No members were returned from the backend.')
+    }
+  }
 
   useEffect(() => {
     const loadOffers = async () => {
@@ -319,92 +408,11 @@ export function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    const loadMembers = async () => {
-      setProfileMembersError('')
-      const response = await memberService.getMembers(1)
+    const timeoutId = window.setTimeout(() => {
+      void loadProfileMembers()
+    }, 0)
 
-      const records = (() => {
-        if (Array.isArray(response)) {
-          return response
-        }
-
-        const nested = extractNestedRecord(response)
-        if (nested && Array.isArray(nested.members)) {
-          return nested.members
-        }
-
-        if (
-          response &&
-          typeof response === 'object' &&
-          Array.isArray((response as { members?: unknown }).members)
-        ) {
-          return (response as { members: unknown[] }).members
-        }
-
-        if (
-          response &&
-          typeof response === 'object' &&
-          Array.isArray((response as { data?: unknown }).data)
-        ) {
-          return (response as { data: unknown[] }).data
-        }
-
-        return []
-      })()
-
-      const nextMembers = records
-        .map((item, index) => {
-          if (!item || typeof item !== "object") {
-            return null
-          }
-
-          const candidate = item as Record<string, unknown>
-          return {
-            id:
-              typeof candidate.id === 'string'
-                ? candidate.id
-                : typeof candidate.id === 'number'
-                  ? String(candidate.id)
-                : typeof candidate._id === 'string'
-                  ? candidate._id
-                  : typeof candidate._id === 'number'
-                    ? String(candidate._id)
-                  : `member-${index}`,
-            name: typeof candidate.name === 'string' ? candidate.name : '',
-            phone: typeof candidate.phone === 'string' ? candidate.phone : '',
-            months:
-              typeof candidate.months === 'string'
-                ? candidate.months
-                : typeof candidate.months === 'number'
-                  ? String(candidate.months)
-                  : '',
-            amount:
-              typeof candidate.amount === 'string'
-                ? candidate.amount
-              : typeof candidate.amount === 'number'
-                  ? String(candidate.amount)
-                : typeof candidate.price === 'string'
-                  ? candidate.price
-                  : typeof candidate.price === 'number'
-                    ? String(candidate.price)
-                  : '',
-            startDate:
-              typeof candidate.start_date === 'string' ? candidate.start_date : '',
-            endDate:
-              typeof candidate.end_date === 'string' ? candidate.end_date : '',
-            notes: typeof candidate.notes === 'string' ? candidate.notes : '',
-          }
-        })
-        .filter((item): item is ProfileMember => item !== null)
-
-      setProfileMembers(nextMembers)
-
-      if (!nextMembers.length) {
-        setProfileMembersError('No members were returned from the backend.')
-      }
-    }
-
-    void loadMembers()
+    return () => window.clearTimeout(timeoutId)
   }, [])
 
   const createLog = (action: string, details: string) => {
@@ -437,9 +445,28 @@ export function DashboardPage() {
     setCheckInId('')
   }
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    setCreateError('')
+    setCreateSuccess('')
+
     if (activeCreateMode === 'session') {
       if (!sessionForm.name || !sessionForm.phone || !sessionForm.amount) {
+        setCreateError('Name, phone, and amount are required.')
+        return
+      }
+
+      setIsCreating(true)
+      const response = await memberService.addSession(
+        1,
+        sessionForm.name.trim(),
+        sessionForm.phone.trim(),
+        sessionForm.sessionType === 'else' ? 'swimming' : sessionForm.sessionType,
+        Number(sessionForm.amount) || 0,
+      )
+      setIsCreating(false)
+
+      if (!response || !isResponseSuccess(response)) {
+        setCreateError(getResponseMessage(response))
         return
       }
 
@@ -450,6 +477,7 @@ export function DashboardPage() {
         ),
         ...current,
       ])
+      setCreateSuccess('Session created successfully.')
       setSessionForm({
         name: '',
         phone: '',
@@ -460,6 +488,23 @@ export function DashboardPage() {
     }
 
     if (!addForm.name || !addForm.phone) {
+      setCreateError('Name and phone are required.')
+      return
+    }
+
+    setIsCreating(true)
+    const response = await memberService.addMember(
+      1,
+      addForm.name.trim(),
+      addForm.phone.trim(),
+      Number(addForm.numberOfMonths) || 0,
+      Number(addForm.amount) || 0,
+      addForm.notes.trim(),
+    )
+    setIsCreating(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      setCreateError(getResponseMessage(response))
       return
     }
 
@@ -485,6 +530,8 @@ export function DashboardPage() {
       ),
       ...current,
     ])
+    await loadProfileMembers()
+    setCreateSuccess('Member created successfully.')
     setAddForm({
       name: '',
       email: '',
@@ -496,16 +543,41 @@ export function DashboardPage() {
     })
   }
 
-  const handleUpdate = () => {
-    const member = members.find((item) => item.id === updateForm.id)
-    if (!member) {
+  const handleUpdate = async () => {
+    setUpdateError('')
+    setUpdateSuccess('')
+
+    if (!updateForm.id || !updateForm.numberOfMonths || !updateForm.amount) {
+      setUpdateError('ID, number of months, and amount are required.')
+      return
+    }
+
+    const id = Number(updateForm.id)
+    if (Number.isNaN(id)) {
+      setUpdateError('Member ID must be a valid number.')
+      return
+    }
+
+    setIsUpdating(true)
+    const response = await memberService.updateMember(
+      1,
+      id,
+      Number(updateForm.numberOfMonths) || 0,
+      Number(updateForm.amount) || 0,
+    )
+    setIsUpdating(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      setUpdateError(getResponseMessage(response))
       return
     }
 
     const selectedOffer = offers.find((offer) => offer.id === updateForm.offerId)
+    const profileMember = profileMembers.find((member) => member.id === updateForm.id)
+
     setMembers((current) =>
       current.map((item) =>
-        item.id === member.id
+        item.id === updateForm.id
           ? {
               ...item,
               plan: selectedOffer?.name || item.plan,
@@ -517,10 +589,12 @@ export function DashboardPage() {
     setLogs((current) => [
       createLog(
         'Update Member',
-        `${member.name} subscription updated to ${selectedOffer?.name || member.plan}.`,
+        `${profileMember?.name || `Member ${updateForm.id}`} subscription updated successfully.`,
       ),
       ...current,
     ])
+    await loadProfileMembers()
+    setUpdateSuccess('Member updated successfully.')
     setUpdateForm({
       id: '',
       offerId: '',
@@ -751,6 +825,8 @@ export function DashboardPage() {
                               </select>
                             </label>
                             {offersError ? <p className="text-sm text-red-300">{offersError}</p> : null}
+                            {createError ? <p className="text-sm text-red-300">{createError}</p> : null}
+                            {createSuccess ? <p className="text-sm text-emerald-300">{createSuccess}</p> : null}
                             <div className="grid gap-3 lg:grid-cols-2">
                               <input
                                 value={addForm.numberOfMonths}
@@ -784,9 +860,10 @@ export function DashboardPage() {
                             <button
                               type="button"
                               onClick={handleAdd}
+                              disabled={isCreating}
                               className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
                             >
-                              Create member
+                              {isCreating ? 'Creating...' : 'Create member'}
                             </button>
                           </>
                         ) : null}
@@ -842,12 +919,15 @@ export function DashboardPage() {
                               placeholder="Amount"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                             />
+                            {createError ? <p className="text-sm text-red-300">{createError}</p> : null}
+                            {createSuccess ? <p className="text-sm text-emerald-300">{createSuccess}</p> : null}
                             <button
                               type="button"
                               onClick={handleAdd}
+                              disabled={isCreating}
                               className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
                             >
-                              Create session
+                              {isCreating ? 'Creating...' : 'Create session'}
                             </button>
                           </>
                         ) : null}
@@ -891,6 +971,8 @@ export function DashboardPage() {
                           </select>
                         </label>
                         {offersError ? <p className="text-sm text-red-300">{offersError}</p> : null}
+                        {updateError ? <p className="text-sm text-red-300">{updateError}</p> : null}
+                        {updateSuccess ? <p className="text-sm text-emerald-300">{updateSuccess}</p> : null}
                         <div className="grid gap-3 lg:grid-cols-2">
                           <input
                             value={updateForm.numberOfMonths}
@@ -915,9 +997,10 @@ export function DashboardPage() {
                         <button
                           type="button"
                           onClick={handleUpdate}
+                          disabled={isUpdating}
                           className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
                         >
-                          Update member
+                          {isUpdating ? 'Updating...' : 'Update member'}
                         </button>
                       </div>
                     ) : null}

@@ -281,7 +281,8 @@ authRouter.post("/restorepassword", async (req: Request<{}, {}, restorePasswordR
     if (!gymData.otpSent) {
       return res.status(401).json({ ok: false, message: "OTP missed" });
     }
-    const ok = await db.updateCompanyPassword(gymData.email, password);
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    const ok = await db.updateCompanyPassword(gymData.email, hashedPassword);
     if (!ok) {
       return res.status(401).json({ ok: false, message: "Something went wrong" });
     }
