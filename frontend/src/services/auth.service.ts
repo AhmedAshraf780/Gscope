@@ -76,4 +76,23 @@ export const authService = {
       console.log(error);
     }
   },
+  restorePassword: async (password: string, confirmPassword: string, session: string) => {
+    try {
+      const res = await fetch(`${server}/api/v1/auth/restorepassword`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          password,
+          confirmPassword,
+          session,
+        }),
+      });
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.log(error);
+    }
+  },
 };

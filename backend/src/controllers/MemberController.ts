@@ -5,10 +5,10 @@ import { Member, Session } from '../database/DAOs/memberDao';
 
 export const addMember = async (req: Request, res: Response) => {
   try {
-    const { name, phone, months, price, start_date, end_date, notes } = req.body;
+    const { name, phone, months, price, notes } = req.body;
     const { gym_id } = req.params;
 
-    if (!name || !phone || !months || !price || !start_date || !end_date || !notes || !gym_id) {
+    if (!name || !phone || !months || !price || !gym_id) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -41,8 +41,8 @@ export const addMember = async (req: Request, res: Response) => {
       phone: phone,
       months: months,
       price: price,
-      start_date: start_date,
-      end_date: end_date,
+      start_date: "",
+      end_date: "",
       notes: notes,
     }
 

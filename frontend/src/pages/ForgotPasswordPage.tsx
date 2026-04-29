@@ -4,17 +4,17 @@ import { getResponseMessage, getResponseSession, isResponseSuccess } from '../au
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
+import { useToast } from '../toast/useToast'
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
   const { savePendingOtpSession, clearOtpSession } = useAuth()
+  const { toast } = useToast()
   const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
     setIsSubmitting(true)
     clearOtpSession()
 
@@ -22,13 +22,21 @@ export function ForgotPasswordPage() {
     setIsSubmitting(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setError(getResponseMessage(response))
+      toast({
+        title: 'Reset request failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
       return
     }
 
     const session = getResponseSession(response)
     if (!session) {
-      setError('Reset request succeeded but no OTP session was returned.')
+      toast({
+        title: 'Reset request failed',
+        description: 'Reset request succeeded but no OTP session was returned.',
+        kind: 'error',
+      })
       return
     }
 
@@ -37,6 +45,7 @@ export function ForgotPasswordPage() {
       email: email.trim(),
       source: 'forgotpassword',
     })
+    toast({ title: 'OTP sent', description: 'Use the code to continue recovery.', kind: 'success' })
     navigate('/validateOtp', { replace: true })
   }
 
@@ -67,9 +76,6 @@ export function ForgotPasswordPage() {
             className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
           />
         </label>
-
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
-
         <button
           type="submit"
           disabled={isSubmitting}

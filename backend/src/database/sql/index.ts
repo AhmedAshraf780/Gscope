@@ -154,6 +154,19 @@ export class SqlDataStore implements Datastore {
   }
   async addMember(member: Member, gym_id: number): Promise<number | undefined> {
     try {
+
+      const now = new Date();
+
+
+      const formatDate = (date: Date) =>
+        `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+
+      member.start_date = formatDate(now);
+
+      const endDate = new Date(now);
+      endDate.setMonth(endDate.getMonth() + member.months);
+      member.end_date = formatDate(endDate);
+
       const result = await this.db.run(
         `INSERT INTO members (gym_id,name, phone, months, price, start_date, end_date, notes)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

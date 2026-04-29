@@ -22,7 +22,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "*",
+    origin: "http://localhost:5173",
   }),
 );
 
@@ -56,7 +56,7 @@ app.get("/events", (req, res: Response) => {
 // test route
 app.get("/", (_: Request, res: Response) => {
   res.json({ message: "Hello World!" });
-});
+})
 
 // routes
 app.use("/api/v1/:gym_id", memberRouter);

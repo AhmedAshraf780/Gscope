@@ -4,6 +4,7 @@ import { getResponseMessage, getResponseSession, isResponseSuccess } from '../au
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
+import { useToast } from '../toast/useToast'
 
 const fields = [
   { id: 'name', label: 'Name', type: 'text', placeholder: 'Mazen Hassan' },
@@ -15,18 +16,17 @@ const fields = [
 export function SignUpPage() {
   const navigate = useNavigate()
   const { savePendingOtpSession, clearOtpSession } = useAuth()
+  const { toast } = useToast()
   const [form, setForm] = useState({
     name: '',
     phone: '',
     email: '',
     password: '',
   })
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
     setIsSubmitting(true)
     clearOtpSession()
 
@@ -40,13 +40,17 @@ export function SignUpPage() {
     setIsSubmitting(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setError(getResponseMessage(response))
+      toast({ title: 'Signup failed', description: getResponseMessage(response), kind: 'error' })
       return
     }
 
     const session = getResponseSession(response)
     if (!session) {
-      setError('Signup succeeded but no OTP session was returned.')
+      toast({
+        title: 'Signup failed',
+        description: 'Signup succeeded but no OTP session was returned.',
+        kind: 'error',
+      })
       return
     }
 
@@ -55,6 +59,7 @@ export function SignUpPage() {
       email: form.email.trim(),
       source: 'signup',
     })
+    toast({ title: 'OTP sent', description: 'Enter the code to continue.', kind: 'success' })
     navigate('/validateOtp', { replace: true })
   }
 
@@ -90,9 +95,6 @@ export function SignUpPage() {
             />
           </label>
         ))}
-
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
-
         <button
           type="submit"
           disabled={isSubmitting}

@@ -1,6 +1,10 @@
-import { startTransition, useDeferredValue, useMemo, useState } from 'react'
+import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { extractNestedRecord, getResponseMessage, isResponseSuccess } from '../auth/authStorage'
+import { memberService } from '../services/member.service'
+import { offersService } from '../services/offers.service'
 import { useAuth } from '../auth/useAuth'
+import { useToast } from '../toast/useToast'
 
 type Member = {
   id: string
@@ -21,6 +25,64 @@ type LogEntry = {
   actor: string
   action: string
   details: string
+}
+
+type OfferOption = {
+  id: string
+  name: string
+}
+
+type ProfileMember = {
+  id: string
+  name: string
+  phone: string
+  months: string
+  amount: string
+  startDate: string
+  endDate: string
+  notes: string
+}
+
+const getMemberActivity = (endDate: string) => {
+  if (!endDate) {
+    return {
+      label: 'Active',
+      className: 'bg-emerald-400/14 text-emerald-200',
+    }
+  }
+
+  const end = new Date(endDate)
+  if (Number.isNaN(end.getTime())) {
+    return {
+      label: 'Active',
+      className: 'bg-emerald-400/14 text-emerald-200',
+    }
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+
+  const diffInDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffInDays < 0) {
+    return {
+      label: 'Inactive',
+      className: 'bg-rose-400/14 text-rose-200',
+    }
+  }
+
+  if (diffInDays <= 3) {
+    return {
+      label: 'Expiring Soon',
+      className: 'bg-amber-400/14 text-amber-200',
+    }
+  }
+
+  return {
+    label: 'Active',
+    className: 'bg-emerald-400/14 text-emerald-200',
+  }
 }
 
 const initialMembers: Member[] = [
@@ -127,6 +189,10 @@ const initialLogs: LogEntry[] = [
 const panes = ['subscriptions', 'profiles', 'logs', 'analytics'] as const
 
 type Pane = (typeof panes)[number]
+const subscriptionActions = ['checkin', 'create', 'update'] as const
+type SubscriptionAction = (typeof subscriptionActions)[number]
+const createModes = ['member', 'session'] as const
+type CreateMode = (typeof createModes)[number]
 
 const metricCards = [
   { label: 'Active subscriptions', value: '184', delta: '+12 this month' },
@@ -138,26 +204,41 @@ const metricCards = [
 export function DashboardPage() {
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { toast } = useToast()
   const [activePane, setActivePane] = useState<Pane>('subscriptions')
+  const [activeSubscriptionAction, setActiveSubscriptionAction] =
+    useState<SubscriptionAction>('checkin')
+  const [activeCreateMode, setActiveCreateMode] = useState<CreateMode>('member')
   const [members, setMembers] = useState(initialMembers)
   const [logs, setLogs] = useState(initialLogs)
   const [profileFilter, setProfileFilter] = useState('')
   const [logDate, setLogDate] = useState('2026-04-29')
   const [checkInId, setCheckInId] = useState('')
-  const [addType, setAddType] = useState<'member' | 'session'>('member')
+  const [offers, setOffers] = useState<OfferOption[]>([])
+  const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([])
+  const [isCreating, setIsCreating] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [addForm, setAddForm] = useState({
-    id: '',
     name: '',
     email: '',
     phone: '',
-    plan: '',
-    sessions: '8',
+    offerId: '',
+    numberOfMonths: '',
+    amount: '',
+    notes: '',
+  })
+  const [sessionForm, setSessionForm] = useState({
+    name: '',
+    phone: '',
+    amount: '',
+    sessionType: 'gym',
   })
   const [updateForm, setUpdateForm] = useState({
     id: '',
-    plan: '',
-    status: 'Active',
-    sessionsLeft: '0',
+    offerId: '',
+    numberOfMonths: '',
+    amount: '',
+    notes: '',
   })
 
   const deferredProfileFilter = useDeferredValue(profileFilter)
@@ -165,19 +246,176 @@ export function DashboardPage() {
   const filteredMembers = useMemo(() => {
     const query = deferredProfileFilter.trim().toLowerCase()
     if (!query) {
-      return members
+      return profileMembers
     }
 
-    return members.filter(
+    return profileMembers.filter(
       (member) =>
-        member.id.toLowerCase().includes(query) || member.name.toLowerCase().includes(query),
+        member.id.toLowerCase().includes(query) ||
+        member.name.toLowerCase().includes(query) ||
+        member.phone.toLowerCase().includes(query),
     )
-  }, [deferredProfileFilter, members])
+  }, [deferredProfileFilter, profileMembers])
 
   const filteredLogs = useMemo(
     () => logs.filter((entry) => entry.date === logDate),
     [logDate, logs],
   )
+
+  const activeCount = members.filter((member) => member.status === 'Active').length
+  const expiringCount = members.filter((member) => member.status !== 'Active').length
+  const totalSessionsLeft = members.reduce((sum, member) => sum + member.sessionsLeft, 0)
+
+  const loadProfileMembers = useCallback(async () => {
+    const response = await memberService.getMembers(1)
+
+    const records = (() => {
+      if (Array.isArray(response)) {
+        return response
+      }
+
+      const nested = extractNestedRecord(response)
+      if (nested && Array.isArray(nested.members)) {
+        return nested.members
+      }
+
+      if (
+        response &&
+        typeof response === 'object' &&
+        Array.isArray((response as { members?: unknown }).members)
+      ) {
+        return (response as { members: unknown[] }).members
+      }
+
+      if (
+        response &&
+        typeof response === 'object' &&
+        Array.isArray((response as { data?: unknown }).data)
+      ) {
+        return (response as { data: unknown[] }).data
+      }
+
+      return []
+    })()
+
+    const nextMembers = records
+      .map((item, index) => {
+        if (!item || typeof item !== 'object') {
+          return null
+        }
+
+        const candidate = item as Record<string, unknown>
+        return {
+          id:
+            typeof candidate.id === 'string'
+              ? candidate.id
+              : typeof candidate.id === 'number'
+                ? String(candidate.id)
+                : typeof candidate._id === 'string'
+                  ? candidate._id
+                  : typeof candidate._id === 'number'
+                    ? String(candidate._id)
+                    : `member-${index}`,
+          name: typeof candidate.name === 'string' ? candidate.name : '',
+          phone: typeof candidate.phone === 'string' ? candidate.phone : '',
+          months:
+            typeof candidate.months === 'string'
+              ? candidate.months
+              : typeof candidate.months === 'number'
+                ? String(candidate.months)
+                : '',
+          amount:
+            typeof candidate.amount === 'string'
+              ? candidate.amount
+              : typeof candidate.amount === 'number'
+                ? String(candidate.amount)
+                : typeof candidate.price === 'string'
+                  ? candidate.price
+                  : typeof candidate.price === 'number'
+                    ? String(candidate.price)
+                    : '',
+          startDate: typeof candidate.start_date === 'string' ? candidate.start_date : '',
+          endDate: typeof candidate.end_date === 'string' ? candidate.end_date : '',
+          notes: typeof candidate.notes === 'string' ? candidate.notes : '',
+        }
+      })
+      .filter((item): item is ProfileMember => item !== null)
+
+    setProfileMembers(nextMembers)
+
+    if (!nextMembers.length) {
+      toast({
+        title: 'Members not loaded',
+        description: 'No members were returned from the backend.',
+        kind: 'error',
+      })
+    }
+  }, [toast])
+
+  useEffect(() => {
+    const loadOffers = async () => {
+      const response = await offersService.getOffers()
+
+      const records = (() => {
+        if (Array.isArray(response)) {
+          return response
+        }
+
+        const nested = extractNestedRecord(response)
+        if (nested && Array.isArray(nested.offers)) {
+          return nested.offers
+        }
+
+        if (response && typeof response === 'object' && Array.isArray((response as { offers?: unknown }).offers)) {
+          return (response as { offers: unknown[] }).offers
+        }
+
+        if (response && typeof response === 'object' && Array.isArray((response as { data?: unknown }).data)) {
+          return (response as { data: unknown[] }).data
+        }
+
+        return []
+      })()
+
+      const nextOffers = records
+        .map((item) => {
+          if (!item || typeof item !== 'object') {
+            return null
+          }
+
+          const candidate = item as Record<string, unknown>
+          const id = candidate.id ?? candidate._id ?? candidate.offerId ?? candidate.value
+          const name = candidate.name ?? candidate.title ?? candidate.offerName ?? candidate.label
+
+          if (typeof id !== 'string' || typeof name !== 'string') {
+            return null
+          }
+
+          return { id, name }
+        })
+        .filter((item): item is OfferOption => item !== null)
+
+      setOffers(nextOffers)
+
+      if (!nextOffers.length) {
+        toast({
+          title: 'Offers not loaded',
+          description: 'No offers were returned from the backend.',
+          kind: 'error',
+        })
+      }
+    }
+
+    void loadOffers()
+  }, [toast])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadProfileMembers()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [loadProfileMembers])
 
   const createLog = (action: string, details: string) => {
     const nextIndex = logs.length + 1
@@ -209,64 +447,173 @@ export function DashboardPage() {
     setCheckInId('')
   }
 
-  const handleAdd = () => {
-    if (addType === 'member') {
-      if (!addForm.id || !addForm.name) {
+  const handleAdd = async () => {
+    if (activeCreateMode === 'session') {
+      if (!sessionForm.name || !sessionForm.phone || !sessionForm.amount) {
+        toast({
+          title: 'Session creation failed',
+          description: 'Name, phone, and amount are required.',
+          kind: 'error',
+        })
         return
       }
 
-      const newMember: Member = {
-        id: addForm.id,
-        name: addForm.name,
-        email: addForm.email,
-        phone: addForm.phone,
-        plan: addForm.plan || 'Monthly Standard',
-        status: 'Active',
-        sessionsLeft: Number(addForm.sessions) || 0,
-        joinedAt: '2026-04-29',
-        lastCheckIn: 'Never',
-      }
-
-      setMembers((current) => [newMember, ...current])
-      setLogs((current) => [
-        createLog('Add Member', `${newMember.name} was created with id ${newMember.id}.`),
-        ...current,
-      ])
-    } else {
-      const member = members.find((item) => item.id === addForm.id)
-      if (!member) {
-        return
-      }
-
-      const increment = Number(addForm.sessions) || 0
-      setMembers((current) =>
-        current.map((item) =>
-          item.id === member.id ? { ...item, sessionsLeft: item.sessionsLeft + increment } : item,
-        ),
+      setIsCreating(true)
+      const response = await memberService.addSession(
+        1,
+        sessionForm.name.trim(),
+        sessionForm.phone.trim(),
+        sessionForm.sessionType === 'else' ? 'swimming' : sessionForm.sessionType,
+        Number(sessionForm.amount) || 0,
       )
+      setIsCreating(false)
+
+      if (!response || !isResponseSuccess(response)) {
+        toast({
+          title: 'Session creation failed',
+          description: getResponseMessage(response),
+          kind: 'error',
+        })
+        return
+      }
+
       setLogs((current) => [
-        createLog('Add Session', `${increment} sessions added to ${member.name} (${member.id}).`),
+        createLog(
+          'Create Session',
+          `${sessionForm.name} booked a ${sessionForm.sessionType} session for ${sessionForm.amount}.`,
+        ),
         ...current,
       ])
-    }
-
-    setAddForm({ id: '', name: '', email: '', phone: '', plan: '', sessions: '8' })
-  }
-
-  const handleUpdate = () => {
-    const member = members.find((item) => item.id === updateForm.id)
-    if (!member) {
+      toast({
+        title: 'Session created',
+        description: 'The session was saved successfully.',
+        kind: 'success',
+      })
+      setSessionForm({
+        name: '',
+        phone: '',
+        amount: '',
+        sessionType: 'gym',
+      })
       return
     }
 
+    if (!addForm.name || !addForm.phone) {
+      toast({
+        title: 'Member creation failed',
+        description: 'Name and phone are required.',
+        kind: 'error',
+      })
+      return
+    }
+
+    setIsCreating(true)
+    const response = await memberService.addMember(
+      1,
+      addForm.name.trim(),
+      addForm.phone.trim(),
+      Number(addForm.numberOfMonths) || 0,
+      Number(addForm.amount) || 0,
+      addForm.notes.trim(),
+    )
+    setIsCreating(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: 'Member creation failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
+      return
+    }
+
+    const selectedOffer = offers.find((offer) => offer.id === addForm.offerId)
+    const generatedId = `MBR-${String(members.length + 1001)}`
+    const newMember: Member = {
+      id: generatedId,
+      name: addForm.name,
+      email: addForm.email || `${addForm.name.toLowerCase().replace(/\s+/g, '.')}@gscope.app`,
+      phone: addForm.phone,
+      plan: selectedOffer?.name || 'Custom Offer',
+      status: 'Active',
+      sessionsLeft: Number(addForm.numberOfMonths) || 0,
+      joinedAt: '2026-04-29',
+      lastCheckIn: 'Never',
+    }
+
+    setMembers((current) => [newMember, ...current])
+    setLogs((current) => [
+      createLog(
+        'Add Member',
+        `${newMember.name} was created with offer ${newMember.plan} for ${addForm.numberOfMonths || '0'} months.`,
+      ),
+      ...current,
+    ])
+    await loadProfileMembers()
+    toast({
+      title: 'Member created',
+      description: 'The member was saved successfully.',
+      kind: 'success',
+    })
+    setAddForm({
+      name: '',
+      email: '',
+      phone: '',
+      offerId: '',
+      numberOfMonths: '',
+      amount: '',
+      notes: '',
+    })
+  }
+
+  const handleUpdate = async () => {
+    if (!updateForm.id || !updateForm.numberOfMonths || !updateForm.amount) {
+      toast({
+        title: 'Member update failed',
+        description: 'ID, number of months, and amount are required.',
+        kind: 'error',
+      })
+      return
+    }
+
+    const id = Number(updateForm.id)
+    if (Number.isNaN(id)) {
+      toast({
+        title: 'Member update failed',
+        description: 'Member ID must be a valid number.',
+        kind: 'error',
+      })
+      return
+    }
+
+    setIsUpdating(true)
+    const response = await memberService.updateMember(
+      1,
+      id,
+      Number(updateForm.numberOfMonths) || 0,
+      Number(updateForm.amount) || 0,
+    )
+    setIsUpdating(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: 'Member update failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
+      return
+    }
+
+    const selectedOffer = offers.find((offer) => offer.id === updateForm.offerId)
+    const profileMember = profileMembers.find((member) => member.id === updateForm.id)
+
     setMembers((current) =>
       current.map((item) =>
-        item.id === member.id
+        item.id === updateForm.id
           ? {
               ...item,
-              plan: updateForm.plan || item.plan,
-              status: updateForm.status as Member['status'],
-              sessionsLeft: Number(updateForm.sessionsLeft),
+              plan: selectedOffer?.name || item.plan,
+              sessionsLeft: Number(updateForm.numberOfMonths) || item.sessionsLeft,
             }
           : item,
       ),
@@ -274,11 +621,23 @@ export function DashboardPage() {
     setLogs((current) => [
       createLog(
         'Update Member',
-        `${member.name} updated to ${updateForm.status} with ${updateForm.sessionsLeft} sessions left.`,
+        `${profileMember?.name || `Member ${updateForm.id}`} subscription updated successfully.`,
       ),
       ...current,
     ])
-    setUpdateForm({ id: '', plan: '', status: 'Active', sessionsLeft: '0' })
+    await loadProfileMembers()
+    toast({
+      title: 'Member updated',
+      description: 'The member was updated successfully.',
+      kind: 'success',
+    })
+    setUpdateForm({
+      id: '',
+      offerId: '',
+      numberOfMonths: '',
+      amount: '',
+      notes: '',
+    })
   }
 
   const handleLogout = () => {
@@ -294,63 +653,87 @@ export function DashboardPage() {
         <div className="grid-overlay absolute inset-0" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 py-6 sm:px-8 lg:px-10">
-        <header className="rounded-[2rem] border border-white/10 bg-white/6 p-5 backdrop-blur-md">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative mx-auto w-full max-w-[1760px] px-4 py-4 sm:px-6 lg:px-8">
+        <header className="rounded-[1.75rem] border border-white/10 bg-white/6 p-5 backdrop-blur-md">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(420px,0.95fr)] xl:items-start">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.26em] text-[var(--sand)]">
                 Owner dashboard
               </div>
-              <h1 className="mt-5 font-display text-4xl text-white sm:text-5xl">
+              <h1 className="mt-4 font-display text-3xl text-white sm:text-4xl xl:text-[3.35rem]">
                 Run the gym from one control surface.
               </h1>
-              <p className="mt-4 max-w-2xl text-base leading-7 text-[var(--muted)]">
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)] sm:text-base">
                 Manage subscriptions, profiles, logs, and analytics with the same system your front
                 desk and staff rely on every day.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
-              >
-                Sign out
-              </button>
-              <Link
-                to="/"
-                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"
-              >
-                View landing
-              </Link>
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto] xl:grid-cols-1">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Members</p>
+                  <p className="mt-3 font-display text-3xl text-white">{members.length}</p>
+                  <p className="mt-1 text-sm text-[var(--sand)]">{activeCount} active now</p>
+                </article>
+                <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                    Watchlist
+                  </p>
+                  <p className="mt-3 font-display text-3xl text-white">{expiringCount}</p>
+                  <p className="mt-1 text-sm text-[var(--sand)]">paused or expired</p>
+                </article>
+                <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                    Sessions Left
+                  </p>
+                  <p className="mt-3 font-display text-3xl text-white">{totalSessionsLeft}</p>
+                  <p className="mt-1 text-sm text-[var(--sand)]">across all members</p>
+                </article>
+              </div>
+
+              <div className="flex flex-wrap gap-3 xl:justify-end">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
+                >
+                  Sign out
+                </button>
+                <Link
+                  to="/"
+                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"
+                >
+                  View landing
+                </Link>
+              </div>
             </div>
           </div>
         </header>
 
-        <section className="mt-6 grid gap-4 lg:grid-cols-4">
+        <section className="mt-4 grid gap-4 lg:grid-cols-4">
           {metricCards.map((card) => (
             <article
               key={card.label}
-              className="rounded-[1.75rem] border border-[var(--line)] bg-white/6 p-5"
+              className="rounded-[1.5rem] border border-[var(--line)] bg-white/6 p-4"
             >
               <p className="text-sm text-[var(--muted)]">{card.label}</p>
-              <p className="mt-3 font-display text-4xl text-white">{card.value}</p>
+              <p className="mt-2 font-display text-3xl text-white">{card.value}</p>
               <p className="mt-2 text-sm text-[var(--sand)]">{card.delta}</p>
             </article>
           ))}
         </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="rounded-[2rem] border border-[var(--line)] bg-white/5 p-4">
-            <nav className="space-y-2">
+        <section className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-3">
+            <nav className="grid gap-2 xl:sticky xl:top-4">
               {panes.map((pane) => (
                 <button
                   key={pane}
                   type="button"
                   onClick={() => setActivePane(pane)}
                   className={[
-                    'w-full rounded-2xl px-4 py-4 text-left text-sm font-medium capitalize transition',
+                    'w-full rounded-2xl px-4 py-3 text-left text-sm font-medium capitalize transition',
                     activePane === pane
                       ? 'bg-[var(--accent)] text-[#08111f]'
                       : 'bg-[#09111d] text-[var(--muted)] hover:text-white',
@@ -362,171 +745,294 @@ export function DashboardPage() {
             </nav>
           </aside>
 
-          <div className="rounded-[2rem] border border-[var(--line)] bg-white/5 p-5 sm:p-6">
+          <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-4 sm:p-5">
             {activePane === 'subscriptions' ? (
               <section className="space-y-6">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
-                    Subscriptions pane
-                  </p>
-                  <h2 className="mt-3 font-display text-3xl text-white">
-                    Check in, add, and update members from one place.
-                  </h2>
-                </div>
+                <div className="mx-auto w-full max-w-4xl space-y-4">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-4">
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {subscriptionActions.map((action) => (
+                        <button
+                          key={action}
+                          type="button"
+                          onClick={() => setActiveSubscriptionAction(action)}
+                          className={[
+                            'rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition',
+                            activeSubscriptionAction === action
+                              ? 'bg-[var(--accent)] text-[#08111f]'
+                              : 'bg-white/6 text-[var(--muted)] hover:text-white',
+                          ].join(' ')}
+                        >
+                          {action === 'checkin'
+                            ? 'Check in'
+                            : action === 'create'
+                              ? 'Create'
+                              : 'Update'}
+                        </button>
+                      ))}
+                    </div>
 
-                <div className="grid gap-5 xl:grid-cols-3">
-                  <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-                    <h3 className="font-display text-2xl text-white">Check in a member</h3>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                      Enter a member id and record the check-in instantly.
-                    </p>
-                    <div className="mt-5 space-y-3">
-                      <input
-                        value={checkInId}
-                        onChange={(event) => setCheckInId(event.target.value)}
-                        placeholder="MBR-1001"
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCheckIn}
-                        className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
-                      >
-                        Check in
-                      </button>
-                    </div>
-                  </article>
+                    {activeSubscriptionAction === 'checkin' ? (
+                      <div className="mt-5 space-y-3">
+                        <div>
+                          <h3 className="font-display text-2xl text-white">Check in a member</h3>
+                          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                            Enter a member id and record the visit instantly.
+                          </p>
+                        </div>
+                        <input
+                          value={checkInId}
+                          onChange={(event) => setCheckInId(event.target.value)}
+                          placeholder="MBR-1001"
+                          className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCheckIn}
+                          className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                        >
+                          Check in
+                        </button>
+                      </div>
+                    ) : null}
 
-                  <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-display text-2xl text-white">Add Member / Session</h3>
-                      <select
-                        value={addType}
-                        onChange={(event) =>
-                          setAddType(event.target.value as 'member' | 'session')
-                        }
-                        className="rounded-full border border-white/10 bg-white/6 px-3 py-2 text-sm text-white outline-none"
-                      >
-                        <option value="member">Member</option>
-                        <option value="session">Session</option>
-                      </select>
-                    </div>
-                    <div className="mt-5 space-y-3">
-                      <input
-                        value={addForm.id}
-                        onChange={(event) =>
-                          setAddForm((current) => ({ ...current, id: event.target.value }))
-                        }
-                        placeholder="Member id"
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                      />
-                      {addType === 'member' ? (
-                        <>
-                          <input
-                            value={addForm.name}
-                            onChange={(event) =>
-                              setAddForm((current) => ({ ...current, name: event.target.value }))
-                            }
-                            placeholder="Member name"
-                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                          />
-                          <input
-                            value={addForm.email}
-                            onChange={(event) =>
-                              setAddForm((current) => ({ ...current, email: event.target.value }))
-                            }
-                            placeholder="Email"
-                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                          />
-                          <input
-                            value={addForm.phone}
-                            onChange={(event) =>
-                              setAddForm((current) => ({ ...current, phone: event.target.value }))
-                            }
-                            placeholder="Phone"
-                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                          />
-                          <input
-                            value={addForm.plan}
-                            onChange={(event) =>
-                              setAddForm((current) => ({ ...current, plan: event.target.value }))
-                            }
-                            placeholder="Plan"
-                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                          />
-                        </>
-                      ) : null}
-                      <input
-                        value={addForm.sessions}
-                        onChange={(event) =>
-                          setAddForm((current) => ({ ...current, sessions: event.target.value }))
-                        }
-                        placeholder="Sessions"
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAdd}
-                        className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
-                      >
-                        {addType === 'member' ? 'Add member' : 'Add session'}
-                      </button>
-                    </div>
-                  </article>
+                    {activeSubscriptionAction === 'create' ? (
+                      <div className="mt-5 space-y-3">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {createModes.map((mode) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => setActiveCreateMode(mode)}
+                              className={[
+                                'rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition',
+                                activeCreateMode === mode
+                                  ? 'bg-[var(--accent)] text-[#08111f]'
+                                  : 'bg-white/6 text-[var(--muted)] hover:text-white',
+                              ].join(' ')}
+                            >
+                              {mode === 'member' ? 'Create member' : 'Create session'}
+                            </button>
+                          ))}
+                        </div>
 
-                  <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-                    <h3 className="font-display text-2xl text-white">Update Member</h3>
-                    <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                      Update plan, status, or sessions left for an existing member.
-                    </p>
-                    <div className="mt-5 space-y-3">
-                      <input
-                        value={updateForm.id}
-                        onChange={(event) =>
-                          setUpdateForm((current) => ({ ...current, id: event.target.value }))
-                        }
-                        placeholder="MBR-1002"
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                      />
-                      <input
-                        value={updateForm.plan}
-                        onChange={(event) =>
-                          setUpdateForm((current) => ({ ...current, plan: event.target.value }))
-                        }
-                        placeholder="Updated plan"
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                      />
-                      <select
-                        value={updateForm.status}
-                        onChange={(event) =>
-                          setUpdateForm((current) => ({ ...current, status: event.target.value }))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Paused">Paused</option>
-                        <option value="Expired">Expired</option>
-                      </select>
-                      <input
-                        value={updateForm.sessionsLeft}
-                        onChange={(event) =>
-                          setUpdateForm((current) => ({
-                            ...current,
-                            sessionsLeft: event.target.value,
-                          }))
-                        }
-                        placeholder="Sessions left"
-                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleUpdate}
-                        className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
-                      >
-                        Update member
-                      </button>
-                    </div>
-                  </article>
+                        {activeCreateMode === 'member' ? (
+                          <>
+                            <div>
+                              <h3 className="font-display text-2xl text-white">Create a member</h3>
+                              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                                Create a member subscription record with the selected offer details.
+                              </p>
+                            </div>
+                            <input
+                              value={addForm.name}
+                              onChange={(event) =>
+                                setAddForm((current) => ({ ...current, name: event.target.value }))
+                              }
+                              placeholder="Name"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <input
+                              value={addForm.phone}
+                              onChange={(event) =>
+                                setAddForm((current) => ({ ...current, phone: event.target.value }))
+                              }
+                              placeholder="Phone"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <label className="block">
+                              <span className="mb-2 block text-sm text-[var(--muted)]">Offers</span>
+                              <select
+                                value={addForm.offerId}
+                                onChange={(event) =>
+                                  setAddForm((current) => ({
+                                    ...current,
+                                    offerId: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                              >
+                                <option value="">Select an offer</option>
+                                {offers.map((offer) => (
+                                  <option key={offer.id} value={offer.id}>
+                                    {offer.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <div className="grid gap-3 lg:grid-cols-2">
+                              <input
+                                value={addForm.numberOfMonths}
+                                onChange={(event) =>
+                                  setAddForm((current) => ({
+                                    ...current,
+                                    numberOfMonths: event.target.value,
+                                  }))
+                                }
+                                placeholder="Number of months"
+                                className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                              />
+                              <input
+                                value={addForm.amount}
+                                onChange={(event) =>
+                                  setAddForm((current) => ({ ...current, amount: event.target.value }))
+                                }
+                                placeholder="Amount of money"
+                                className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                              />
+                            </div>
+                            <textarea
+                              value={addForm.notes}
+                              onChange={(event) =>
+                                setAddForm((current) => ({ ...current, notes: event.target.value }))
+                              }
+                              placeholder="Notes"
+                              rows={4}
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAdd}
+                              disabled={isCreating}
+                              className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                            >
+                              {isCreating ? 'Creating...' : 'Create member'}
+                            </button>
+                          </>
+                        ) : null}
+
+                        {activeCreateMode === 'session' ? (
+                          <>
+                            <div>
+                              <h3 className="font-display text-2xl text-white">Create a session</h3>
+                              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                                Record a one-off session sale with its type and amount.
+                              </p>
+                            </div>
+                            <input
+                              value={sessionForm.name}
+                              onChange={(event) =>
+                                setSessionForm((current) => ({ ...current, name: event.target.value }))
+                              }
+                              placeholder="Name"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <input
+                              value={sessionForm.phone}
+                              onChange={(event) =>
+                                setSessionForm((current) => ({ ...current, phone: event.target.value }))
+                              }
+                              placeholder="Phone"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <label className="block">
+                              <span className="mb-2 block text-sm text-[var(--muted)]">
+                                Session type
+                              </span>
+                              <select
+                                value={sessionForm.sessionType}
+                                onChange={(event) =>
+                                  setSessionForm((current) => ({
+                                    ...current,
+                                    sessionType: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                              >
+                                <option value="gym">Gym</option>
+                                <option value="football">Football</option>
+                                <option value="else">Else</option>
+                              </select>
+                            </label>
+                            <input
+                              value={sessionForm.amount}
+                              onChange={(event) =>
+                                setSessionForm((current) => ({ ...current, amount: event.target.value }))
+                              }
+                              placeholder="Amount"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAdd}
+                              disabled={isCreating}
+                              className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                            >
+                              {isCreating ? 'Creating...' : 'Create session'}
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {activeSubscriptionAction === 'update' ? (
+                      <div className="mt-5 space-y-3">
+                        <div>
+                          <h3 className="font-display text-2xl text-white">Update a member</h3>
+                          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                            Update the selected member subscription details.
+                          </p>
+                        </div>
+                        <input
+                          value={updateForm.id}
+                          onChange={(event) =>
+                            setUpdateForm((current) => ({ ...current, id: event.target.value }))
+                          }
+                          placeholder="ID"
+                          className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                        />
+                        <label className="block">
+                          <span className="mb-2 block text-sm text-[var(--muted)]">Offers</span>
+                          <select
+                            value={updateForm.offerId}
+                            onChange={(event) =>
+                              setUpdateForm((current) => ({
+                                ...current,
+                                offerId: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                          >
+                            <option value="">Select an offer</option>
+                            {offers.map((offer) => (
+                              <option key={offer.id} value={offer.id}>
+                                {offer.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="grid gap-3 lg:grid-cols-2">
+                          <input
+                            value={updateForm.numberOfMonths}
+                            onChange={(event) =>
+                              setUpdateForm((current) => ({
+                                ...current,
+                                numberOfMonths: event.target.value,
+                              }))
+                            }
+                            placeholder="Number of months"
+                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                          />
+                          <input
+                            value={updateForm.amount}
+                            onChange={(event) =>
+                              setUpdateForm((current) => ({ ...current, amount: event.target.value }))
+                            }
+                            placeholder="Amount of money"
+                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleUpdate}
+                          disabled={isUpdating}
+                          className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                        >
+                          {isUpdating ? 'Updating...' : 'Update member'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </section>
             ) : null}
@@ -547,26 +1053,26 @@ export function DashboardPage() {
                     onChange={(event) =>
                       startTransition(() => setProfileFilter(event.target.value))
                     }
-                    placeholder="Filter by id or name"
+                    placeholder="Filter by id, name, or phone"
                     className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)] lg:max-w-sm"
                   />
                 </div>
 
-                <div className="overflow-hidden rounded-[1.75rem] border border-white/10">
-                  <div className="overflow-x-auto">
+                <div className="overflow-hidden rounded-[1.5rem] border border-white/10">
+                  <div className="max-h-[760px] overflow-auto">
                     <table className="min-w-full bg-[#09111d] text-left text-sm">
-                      <thead className="bg-white/6 text-[var(--sand)]">
+                      <thead className="sticky top-0 bg-[#101827] text-[var(--sand)]">
                         <tr>
                           {[
                             'ID',
                             'Name',
-                            'Email',
                             'Phone',
-                            'Plan',
-                            'Status',
-                            'Sessions Left',
-                            'Joined At',
-                            'Last Check-in',
+                            'Active',
+                            'Months',
+                            'Amount',
+                            'Start Date',
+                            'End Date',
+                            'Notes',
                           ].map((column) => (
                             <th key={column} className="px-4 py-4 font-medium whitespace-nowrap">
                               {column}
@@ -577,28 +1083,32 @@ export function DashboardPage() {
                       <tbody>
                         {filteredMembers.map((member) => (
                           <tr key={member.id} className="border-t border-white/8 text-[var(--muted)]">
+                            {(() => {
+                              const activity = getMemberActivity(member.endDate)
+
+                              return (
+                                <>
                             <td className="px-4 py-4 whitespace-nowrap text-white">{member.id}</td>
                             <td className="px-4 py-4 whitespace-nowrap">{member.name}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.email}</td>
                             <td className="px-4 py-4 whitespace-nowrap">{member.phone}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.plan}</td>
                             <td className="px-4 py-4 whitespace-nowrap">
                               <span
                                 className={[
                                   'rounded-full px-3 py-1 text-xs font-medium',
-                                  member.status === 'Active'
-                                    ? 'bg-emerald-400/14 text-emerald-200'
-                                    : member.status === 'Paused'
-                                      ? 'bg-amber-400/14 text-amber-200'
-                                      : 'bg-rose-400/14 text-rose-200',
+                                  activity.className,
                                 ].join(' ')}
                               >
-                                {member.status}
+                                {activity.label}
                               </span>
                             </td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.sessionsLeft}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.joinedAt}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.lastCheckIn}</td>
+                            <td className="px-4 py-4 whitespace-nowrap">{member.months}</td>
+                            <td className="px-4 py-4 whitespace-nowrap">{member.amount}</td>
+                            <td className="px-4 py-4 whitespace-nowrap">{member.startDate}</td>
+                            <td className="px-4 py-4 whitespace-nowrap">{member.endDate}</td>
+                            <td className="px-4 py-4">{member.notes || '-'}</td>
+                                </>
+                              )
+                            })()}
                           </tr>
                         ))}
                       </tbody>
