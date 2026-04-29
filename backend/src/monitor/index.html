@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Core Sentinel | Server Monitor</title>
+    <style>
+        :root {
+            --bg: #0a0b10;
+            --card-bg: rgba(20, 22, 30, 0.8);
+            --accent: #00f2ff;
+            --success: #00ff88;
+            --error: #ff4444;
+            --warning: #ffaa00;
+            --text: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', 'Roboto', monospace;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            margin: 0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: var(--success);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px var(--success);
+            margin-right: 8px;
+        }
+
+        #logs {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .log-entry {
+            background: var(--card-bg);
+            border-left: 4px solid var(--accent);
+            padding: 12px 20px;
+            border-radius: 4px;
+            display: grid;
+            grid-template-columns: 80px 1fr 100px 80px;
+            align-items: center;
+            font-family: 'Courier New', Courier, monospace;
+            backdrop-filter: blur(5px);
+            animation: slideIn 0.3s ease-out;
+            transition: transform 0.2s;
+        }
+
+        .log-entry:hover {
+            transform: scale(1.01);
+            background: rgba(30, 35, 45, 0.9);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .method { font-weight: bold; color: var(--accent); }
+        .url { color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .duration { text-align: right; color: #888; font-size: 0.9rem; }
+        .status { font-weight: bold; text-align: center; border-radius: 4px; padding: 2px 6px; }
+        
+        /* Status Colors */
+        .status-2xx { color: var(--success); }
+        .status-4xx { color: var(--warning); }
+        .status-5xx { color: var(--error); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h2><span class="status-dot"></span>Live Traffic</h2>
+        <div id="connection-status" style="font-size: 0.8rem; color: #666;">STREAMING ACTIVE</div>
+    </header>
+
+    <ul id="logs">
+        </ul>
+</div>
+
+<script>
+    const logs = document.getElementById("logs");
+    const eventSource = new EventSource("http://localhost:6969/events");
+
+    eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Determine status class
+        const statusType = Math.floor(data.status / 100) + 'xx';
+        
+        const li = document.createElement("li");
+        li.className = "log-entry";
+        
+        li.innerHTML = `
+            <span class="method">${data.method}</span>
+            <span class="url">${data.url}</span>
+            <span class="duration">${data.duration}ms</span>
+            <span class="status status-${statusType}">${data.status}</span>
+        `;
+
+        logs.prepend(li);
+
+        // Keep only the last 20 logs to prevent memory bloat
+        if (logs.children.length > 20) {
+            logs.removeChild(logs.lastChild);
+        }
+    };
+
+    eventSource.onerror = () => {
+        document.getElementById("connection-status").textContent = "CONNECTION LOST";
+        document.querySelector(".status-dot").style.backgroundColor = "#ff4444";
+    };
+</script>
+
+</body>
+</html>
