@@ -59,13 +59,13 @@ app.get("/", (_: Request, res: Response) => {
 });
 
 // routes
-app.use("/api/v1/:gym_id/members", memberRouter);
+app.use("/api/v1/:gym_id", memberRouter);
 app.use("/api/v1/companies", companyRouter);
 
 //NOTE: this route is the correct one
 // so the endpoint would be like /api/v1/4(gym_id)/logs/5(member_id)
 //app.use("/api/v1/:gym_id/logs", logsRouter)
-app.use("/api/v1/logs", logsRouter); // NOTE: not that one
+app.use("/api/v1/:gym_id/logs", logsRouter); // NOTE: not that one
 app.use("/api/v1/auth", authRouter);
 
 // start server

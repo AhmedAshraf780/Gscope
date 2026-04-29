@@ -15,14 +15,14 @@ const memberRouter = Router({ mergeParams: true });
 // so don't tell me to add a members call me in endpoint /addMember ???
 
 // TODO: ReWrite the endpoint after you understood the REST DESIGN
-memberRouter.post("/add", addMember)
-memberRouter.delete("/delete/:id", deleteMember)
-memberRouter.put("/update/:id", updateMember)
-memberRouter.get("/get/:id", getMemberById)
-memberRouter.get("/getname", getMemberByName)
-memberRouter.get("/getall", listMembersOfGym)
-memberRouter.post("/addsession", addSession)
-memberRouter.get("/listsessions", listSessions)
+memberRouter.post("/members", addMember)
+memberRouter.delete("/members/:id", deleteMember)
+memberRouter.put("/members/:id", updateMember)
+memberRouter.get("/members/:id", getMemberById)
+memberRouter.get("/members/filter", getMemberByName)
+memberRouter.get("/members", listMembersOfGym)
+memberRouter.post("/sessions", addSession)
+memberRouter.get("/sessions", listSessions)
 
 export default memberRouter;
 
