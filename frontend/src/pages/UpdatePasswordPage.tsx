@@ -4,33 +4,45 @@ import { getResponseMessage, isResponseSuccess } from '../auth/authStorage'
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
+import { useToast } from '../toast/useToast'
 
 export function UpdatePasswordPage() {
   const navigate = useNavigate()
   const { pendingOtpSession, clearOtpSession } = useAuth()
+  const { toast } = useToast()
   const [form, setForm] = useState({
     password: '',
     confirmPassword: '',
   })
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
 
     if (!pendingOtpSession?.session) {
-      setError('Missing session. Please start the recovery process again.')
+      toast({
+        title: 'Update failed',
+        description: 'Missing session. Please start the recovery process again.',
+        kind: 'error',
+      })
       return
     }
 
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.')
+      toast({
+        title: 'Validation failed',
+        description: 'Passwords do not match.',
+        kind: 'error',
+      })
       return
     }
 
     if (form.password.length < 6) {
-      setError('Password must be at least 6 characters long.')
+      toast({
+        title: 'Validation failed',
+        description: 'Password must be at least 6 characters long.',
+        kind: 'error',
+      })
       return
     }
 
@@ -43,11 +55,20 @@ export function UpdatePasswordPage() {
     setIsSubmitting(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setError(getResponseMessage(response))
+      toast({
+        title: 'Update failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
       return
     }
 
     clearOtpSession()
+    toast({
+      title: 'Password updated',
+      description: 'Your password has been successfully updated. You can sign in now.',
+      kind: 'success',
+    })
     navigate('/signin', { replace: true, state: { email: pendingOtpSession.email } })
   }
 
@@ -93,8 +114,6 @@ export function UpdatePasswordPage() {
             className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
           />
         </label>
-
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
         <button
           type="submit"

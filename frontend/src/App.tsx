@@ -5,6 +5,7 @@ import { LandingPage } from './pages/LandingPage'
 import { SignInPage } from './pages/SignInPage'
 import { SignUpPage } from './pages/SignUpPage'
 import { ValidateOtpPage } from './pages/ValidateOtpPage'
+import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
 import { PendingOtpRoute, ProtectedRoute, PublicOnlyRoute } from './routes/RouteGuards'
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         </Route>
         <Route element={<PendingOtpRoute />}>
           <Route path="/validateOtp" element={<ValidateOtpPage />} />
+          <Route path="/updatepassword" element={<UpdatePasswordPage />} />
         </Route>
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />

@@ -72,6 +72,13 @@ export function ValidateOtpPage() {
     }
 
     const email = pendingOtpSession.email
+    
+    if (response.forgotPassword) {
+      toast({ title: 'OTP validated', description: 'Please set a new password.', kind: 'success' })
+      navigate('/updatepassword', { replace: true })
+      return
+    }
+
     clearOtpSession()
     toast({ title: 'OTP validated', description: 'You can sign in now.', kind: 'success' })
     navigate('/signin', { replace: true, state: { email } })
