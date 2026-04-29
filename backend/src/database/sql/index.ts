@@ -249,6 +249,12 @@ export class SqlDataStore implements Datastore {
       return [];
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // LOGS
+  /////////////////////////////////////////////////////////////////////////////
+
+
   async createLog(member_id: number, gym_id: number): Promise<number | undefined> {
     try {
       const result = await this.db.run(

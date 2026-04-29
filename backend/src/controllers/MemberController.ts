@@ -46,6 +46,11 @@ export const addMember = async (req: Request, res: Response) => {
       notes: notes,
     }
 
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+
     await db.addMember(member, Number(gym_id));
 
 
@@ -61,7 +66,7 @@ export const addMember = async (req: Request, res: Response) => {
 export const deleteMember = async (req: Request, res: Response) => {
   try {
 
-    const { id } = req.params;
+    const { gym_id, id } = req.params;
 
 
     if (!id || isNaN(Number(id))) {
@@ -70,6 +75,14 @@ export const deleteMember = async (req: Request, res: Response) => {
 
     // WARNING: this code will lead to errors and the user will get 500 even the server is running
     // you should handle all the cases and i am not talking about validation of the input
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+    const member = db.getMemberById(Number(id));
+    if (!member) {
+      return res.status(400).json({ message: "There is no member with this id to be deleted" });
+    }
     await db.deleteMember(Number(id));
 
     return res.status(200).json({ message: "Member deleted successfully" });
@@ -83,7 +96,7 @@ export const deleteMember = async (req: Request, res: Response) => {
 export const updateMember = async (req: Request, res: Response) => {
   try {
     const { months, price } = req.body;
-    const { id } = req.params;
+    const { gym_id, id } = req.params;
     if (!id || !months || !price) {
       return res.status(400).json({ message: "Member ID, months, and price are required" });
     }
@@ -96,6 +109,16 @@ export const updateMember = async (req: Request, res: Response) => {
 
     // WARNING: this code will lead to errors and the user will get 500 even the server is running
     // you should handle all the cases and i am not talking about validation of the input
+
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+    const member = db.getMemberById(Number(id));
+    if (!member) {
+      return res.status(400).json({ message: "There is no member with this id to be updated" });
+    }
+
     await db.updateMember(Number(id), months, price);
     return res.status(200).json({ message: "Member updated successfully" });
   } catch (error) {
@@ -108,14 +131,23 @@ export const updateMember = async (req: Request, res: Response) => {
 
 export const getMemberById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const { gym_id, id } = req.params;
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({ message: "member id is required" })
     }
 
     // WARNING: this code will lead to errors and the user will get 500 even the server is running
     // you should handle all the cases and i am not talking about validation of the input
+
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+
     const member = await db.getMemberById(Number(id));
+    if (!member) {
+      return res.status(400).json({ message: "There is no member with this id" });
+    }
     return res.status(200).json({ member });
   } catch (error) {
     console.log(error);
@@ -125,13 +157,19 @@ export const getMemberById = async (req: Request, res: Response) => {
 
 export const getMemberByName = async (req: Request, res: Response) => {
   try {
+    const { gym_id } = req.params;
     const { name } = req.query;
     if (!name || typeof name !== 'string') {
       return res.status(400).json({ message: "member name is required" })
     }
+
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
     const member = await db.getMemberByName(name);
     if (!member) {
-      return res.status(404).json({ message: "Member not found" });
+      return res.status(404).json({ message: "There is no member with this name" });
     }
     return res.status(200).json(member);
   } catch (error) {
@@ -149,6 +187,11 @@ export const listMembersOfGym = async (req: Request, res: Response) => {
 
     // WARNING: this code will lead to errors and the user will get 500 even the server is running
     // you should handle all the cases and i am not talking about validation of the input
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+
     const members = await db.listMembersOfGym(Number(gym_id));
     return res.status(200).json(members);
   } catch (error) {
@@ -191,6 +234,12 @@ export const addSession = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "member name is required" })
     }
 
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+
+
 
     await db.addSession(session, Number(gym_id));
     return res.status(200).json({ message: "Session added successfully" });
@@ -213,6 +262,13 @@ export const listSessions = async (req: Request, res: Response) => {
     if (!['gym', 'football', 'swimming'].includes(type.toLowerCase())) {
       return res.status(400).json({ message: "invalid session type" })
     }
+
+    const gym = db.getCompanyById(Number(gym_id));
+    if (!gym) {
+      return res.status(400).json({ message: "Gym not found" });
+    }
+
+
     const sessions = await db.listSessions(type, Number(gym_id));
     return res.status(200).json(sessions);
   } catch (error) {
