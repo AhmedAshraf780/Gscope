@@ -10,7 +10,7 @@ const OTP_LENGTH = 6
 
 export function ValidateOtpPage() {
   const navigate = useNavigate()
-  const { pendingOtpSession, clearOtpSession } = useAuth()
+  const { pendingOtpSession, clearOtpSession, savePendingOtpSession } = useAuth()
   const { toast } = useToast()
   const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ''))
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -72,6 +72,18 @@ export function ValidateOtpPage() {
     }
 
     const email = pendingOtpSession.email
+    
+    if ((response as any).forgotPassword) {
+      savePendingOtpSession({
+        email,
+        session: (response as any).session,
+        source: 'forgotpassword',
+      })
+      toast({ title: 'OTP validated', description: 'Please update your password.', kind: 'success' })
+      navigate('/restorepassword', { replace: true })
+      return
+    }
+
     clearOtpSession()
     toast({ title: 'OTP validated', description: 'You can sign in now.', kind: 'success' })
     navigate('/signin', { replace: true, state: { email } })
