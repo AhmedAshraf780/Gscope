@@ -65,7 +65,7 @@ authRouter.post("/signin", async (req: Request<{}, {}, loginRequest>, res: Respo
     }
 
     // validate the password
-    const ok = bcrypt.compare(password, gym.password);
+    const ok = await bcrypt.compare(password, gym.password);
     if (!ok) {
       return res.status(401).json({ message: "Invalid credentials", ok: false });
     }
