@@ -1,5 +1,6 @@
 import { startTransition, useDeferredValue, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/useAuth'
 
 type Member = {
   id: string
@@ -135,6 +136,8 @@ const metricCards = [
 ]
 
 export function DashboardPage() {
+  const navigate = useNavigate()
+  const { logout } = useAuth()
   const [activePane, setActivePane] = useState<Pane>('subscriptions')
   const [members, setMembers] = useState(initialMembers)
   const [logs, setLogs] = useState(initialLogs)
@@ -278,6 +281,11 @@ export function DashboardPage() {
     setUpdateForm({ id: '', plan: '', status: 'Active', sessionsLeft: '0' })
   }
 
+  const handleLogout = () => {
+    logout()
+    navigate('/signin', { replace: true })
+  }
+
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
       <div className="pointer-events-none fixed inset-0 opacity-90">
@@ -303,12 +311,13 @@ export function DashboardPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                to="/signin"
+              <button
+                type="button"
+                onClick={handleLogout}
                 className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
               >
-                Back to auth
-              </Link>
+                Sign out
+              </button>
               <Link
                 to="/"
                 className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"

@@ -1,7 +1,39 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { getResponseMessage, isResponseSuccess } from '../auth/authStorage'
+import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
+import { authService } from '../services/auth.service'
 
 export function SignInPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { setAuthenticatedFromResponse } = useAuth()
+  const [form, setForm] = useState({
+    email: typeof location.state?.email === 'string' ? location.state.email : '',
+    password: '',
+  })
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+    setIsSubmitting(true)
+
+    const response = await authService.login(form.email.trim(), form.password)
+    setIsSubmitting(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      setError(getResponseMessage(response))
+      return
+    }
+
+    setAuthenticatedFromResponse(response)
+    const from = typeof location.state?.from === 'string' ? location.state.from : '/dashboard'
+    navigate(from, { replace: true })
+  }
+
   return (
     <AuthShell
       eyebrow="Welcome back"
@@ -23,11 +55,13 @@ export function SignInPage() {
         </div>
       }
     >
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-white">Email</span>
           <input
             type="email"
+            value={form.email}
+            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
             placeholder="owner@gscope.app"
             className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
           />
@@ -37,24 +71,24 @@ export function SignInPage() {
           <span className="mb-2 block text-sm font-medium text-white">Password</span>
           <input
             type="password"
+            value={form.password}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, password: event.target.value }))
+            }
             placeholder="Enter your password"
             className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
           />
         </label>
 
+        {error ? <p className="text-sm text-red-300">{error}</p> : null}
+
         <button
           type="submit"
+          disabled={isSubmitting}
           className="w-full rounded-2xl bg-[var(--accent)] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f] transition hover:-translate-y-0.5"
         >
-          Sign in
+          {isSubmitting ? 'Signing in...' : 'Sign in'}
         </button>
-
-        <Link
-          to="/dashboard"
-          className="block rounded-2xl border border-white/10 px-5 py-4 text-center text-sm font-semibold uppercase tracking-[0.18em] text-white transition hover:border-white/30"
-        >
-          Open demo dashboard
-        </Link>
       </form>
     </AuthShell>
   )

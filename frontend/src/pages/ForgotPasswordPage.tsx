@@ -1,7 +1,45 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { getResponseMessage, getResponseSession, isResponseSuccess } from '../auth/authStorage'
+import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
+import { authService } from '../services/auth.service'
 
 export function ForgotPasswordPage() {
+  const navigate = useNavigate()
+  const { savePendingOtpSession, clearOtpSession } = useAuth()
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+    setIsSubmitting(true)
+    clearOtpSession()
+
+    const response = await authService.forgetPassword(email.trim())
+    setIsSubmitting(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      setError(getResponseMessage(response))
+      return
+    }
+
+    const session = getResponseSession(response)
+    if (!session) {
+      setError('Reset request succeeded but no OTP session was returned.')
+      return
+    }
+
+    savePendingOtpSession({
+      session,
+      email: email.trim(),
+      source: 'forgotpassword',
+    })
+    navigate('/validateOtp', { replace: true })
+  }
+
   return (
     <AuthShell
       eyebrow="Password recovery"
@@ -18,29 +56,27 @@ export function ForgotPasswordPage() {
         </p>
       }
     >
-      <form className="space-y-4">
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-white">Email</span>
           <input
             type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             placeholder="owner@gscope.app"
             className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
           />
         </label>
 
+        {error ? <p className="text-sm text-red-300">{error}</p> : null}
+
         <button
           type="submit"
+          disabled={isSubmitting}
           className="w-full rounded-2xl bg-[var(--accent)] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f] transition hover:-translate-y-0.5"
         >
-          Send reset code
+          {isSubmitting ? 'Sending...' : 'Send reset code'}
         </button>
-
-        <Link
-          to="/validateOtp"
-          className="block rounded-2xl border border-white/10 px-5 py-4 text-center text-sm font-semibold uppercase tracking-[0.18em] text-white transition hover:border-white/30"
-        >
-          I already have the OTP
-        </Link>
       </form>
     </AuthShell>
   )

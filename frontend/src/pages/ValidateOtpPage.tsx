@@ -1,11 +1,18 @@
 import { useState, type ChangeEvent, type KeyboardEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { getResponseMessage, isResponseSuccess } from '../auth/authStorage'
+import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
+import { authService } from '../services/auth.service'
 
 const OTP_LENGTH = 6
 
 export function ValidateOtpPage() {
+  const navigate = useNavigate()
+  const { pendingOtpSession, clearOtpSession } = useAuth()
   const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ''))
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (index: number, event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value.replace(/\D/g, '').slice(-1)
@@ -26,6 +33,35 @@ export function ValidateOtpPage() {
     ) {
       event.currentTarget.previousElementSibling.focus()
     }
+  }
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError('')
+
+    if (!pendingOtpSession?.session) {
+      setError('Missing OTP session. Please sign up again.')
+      return
+    }
+
+    const code = otp.join('')
+    if (code.length !== OTP_LENGTH) {
+      setError('Enter the complete 6-digit code.')
+      return
+    }
+
+    setIsSubmitting(true)
+    const response = await authService.sendOTP(pendingOtpSession.session, code)
+    setIsSubmitting(false)
+
+    if (!response || !isResponseSuccess(response)) {
+      setError(getResponseMessage(response))
+      return
+    }
+
+    const email = pendingOtpSession.email
+    clearOtpSession()
+    navigate('/signin', { replace: true, state: { email } })
   }
 
   return (
@@ -49,9 +85,14 @@ export function ValidateOtpPage() {
         </div>
       }
     >
-      <form className="space-y-6">
+      <form className="space-y-6" onSubmit={handleSubmit}>
         <div>
           <span className="mb-2 block text-sm font-medium text-white">Verification code</span>
+          {pendingOtpSession?.email ? (
+            <p className="mb-4 text-sm text-[var(--muted)]">
+              Enter the code sent for {pendingOtpSession.email}.
+            </p>
+          ) : null}
           <div className="grid grid-cols-6 gap-3">
             {otp.map((digit, index) => (
               <input
@@ -67,11 +108,14 @@ export function ValidateOtpPage() {
           </div>
         </div>
 
+        {error ? <p className="text-sm text-red-300">{error}</p> : null}
+
         <button
           type="submit"
+          disabled={isSubmitting}
           className="w-full rounded-2xl bg-[var(--accent)] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f] transition hover:-translate-y-0.5"
         >
-          Validate OTP
+          {isSubmitting ? 'Validating...' : 'Validate OTP'}
         </button>
       </form>
     </AuthShell>
