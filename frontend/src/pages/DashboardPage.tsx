@@ -1,9 +1,10 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { extractNestedRecord, getResponseMessage, isResponseSuccess } from '../auth/authStorage'
 import { memberService } from '../services/member.service'
 import { offersService } from '../services/offers.service'
 import { useAuth } from '../auth/useAuth'
+import { useToast } from '../toast/useToast'
 
 type Member = {
   id: string
@@ -203,6 +204,7 @@ const metricCards = [
 export function DashboardPage() {
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { toast } = useToast()
   const [activePane, setActivePane] = useState<Pane>('subscriptions')
   const [activeSubscriptionAction, setActiveSubscriptionAction] =
     useState<SubscriptionAction>('checkin')
@@ -213,14 +215,8 @@ export function DashboardPage() {
   const [logDate, setLogDate] = useState('2026-04-29')
   const [checkInId, setCheckInId] = useState('')
   const [offers, setOffers] = useState<OfferOption[]>([])
-  const [offersError, setOffersError] = useState('')
   const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([])
-  const [profileMembersError, setProfileMembersError] = useState('')
-  const [createError, setCreateError] = useState('')
-  const [createSuccess, setCreateSuccess] = useState('')
   const [isCreating, setIsCreating] = useState(false)
-  const [updateError, setUpdateError] = useState('')
-  const [updateSuccess, setUpdateSuccess] = useState('')
   const [isUpdating, setIsUpdating] = useState(false)
   const [addForm, setAddForm] = useState({
     name: '',
@@ -270,8 +266,7 @@ export function DashboardPage() {
   const expiringCount = members.filter((member) => member.status !== 'Active').length
   const totalSessionsLeft = members.reduce((sum, member) => sum + member.sessionsLeft, 0)
 
-  const loadProfileMembers = async () => {
-    setProfileMembersError('')
+  const loadProfileMembers = useCallback(async () => {
     const response = await memberService.getMembers(1)
 
     const records = (() => {
@@ -349,13 +344,16 @@ export function DashboardPage() {
     setProfileMembers(nextMembers)
 
     if (!nextMembers.length) {
-      setProfileMembersError('No members were returned from the backend.')
+      toast({
+        title: 'Members not loaded',
+        description: 'No members were returned from the backend.',
+        kind: 'error',
+      })
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     const loadOffers = async () => {
-      setOffersError('')
       const response = await offersService.getOffers()
 
       const records = (() => {
@@ -400,12 +398,16 @@ export function DashboardPage() {
       setOffers(nextOffers)
 
       if (!nextOffers.length) {
-        setOffersError('No offers were returned from the backend.')
+        toast({
+          title: 'Offers not loaded',
+          description: 'No offers were returned from the backend.',
+          kind: 'error',
+        })
       }
     }
 
     void loadOffers()
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -413,7 +415,7 @@ export function DashboardPage() {
     }, 0)
 
     return () => window.clearTimeout(timeoutId)
-  }, [])
+  }, [loadProfileMembers])
 
   const createLog = (action: string, details: string) => {
     const nextIndex = logs.length + 1
@@ -446,12 +448,13 @@ export function DashboardPage() {
   }
 
   const handleAdd = async () => {
-    setCreateError('')
-    setCreateSuccess('')
-
     if (activeCreateMode === 'session') {
       if (!sessionForm.name || !sessionForm.phone || !sessionForm.amount) {
-        setCreateError('Name, phone, and amount are required.')
+        toast({
+          title: 'Session creation failed',
+          description: 'Name, phone, and amount are required.',
+          kind: 'error',
+        })
         return
       }
 
@@ -466,7 +469,11 @@ export function DashboardPage() {
       setIsCreating(false)
 
       if (!response || !isResponseSuccess(response)) {
-        setCreateError(getResponseMessage(response))
+        toast({
+          title: 'Session creation failed',
+          description: getResponseMessage(response),
+          kind: 'error',
+        })
         return
       }
 
@@ -477,7 +484,11 @@ export function DashboardPage() {
         ),
         ...current,
       ])
-      setCreateSuccess('Session created successfully.')
+      toast({
+        title: 'Session created',
+        description: 'The session was saved successfully.',
+        kind: 'success',
+      })
       setSessionForm({
         name: '',
         phone: '',
@@ -488,7 +499,11 @@ export function DashboardPage() {
     }
 
     if (!addForm.name || !addForm.phone) {
-      setCreateError('Name and phone are required.')
+      toast({
+        title: 'Member creation failed',
+        description: 'Name and phone are required.',
+        kind: 'error',
+      })
       return
     }
 
@@ -504,7 +519,11 @@ export function DashboardPage() {
     setIsCreating(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setCreateError(getResponseMessage(response))
+      toast({
+        title: 'Member creation failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
       return
     }
 
@@ -531,7 +550,11 @@ export function DashboardPage() {
       ...current,
     ])
     await loadProfileMembers()
-    setCreateSuccess('Member created successfully.')
+    toast({
+      title: 'Member created',
+      description: 'The member was saved successfully.',
+      kind: 'success',
+    })
     setAddForm({
       name: '',
       email: '',
@@ -544,17 +567,22 @@ export function DashboardPage() {
   }
 
   const handleUpdate = async () => {
-    setUpdateError('')
-    setUpdateSuccess('')
-
     if (!updateForm.id || !updateForm.numberOfMonths || !updateForm.amount) {
-      setUpdateError('ID, number of months, and amount are required.')
+      toast({
+        title: 'Member update failed',
+        description: 'ID, number of months, and amount are required.',
+        kind: 'error',
+      })
       return
     }
 
     const id = Number(updateForm.id)
     if (Number.isNaN(id)) {
-      setUpdateError('Member ID must be a valid number.')
+      toast({
+        title: 'Member update failed',
+        description: 'Member ID must be a valid number.',
+        kind: 'error',
+      })
       return
     }
 
@@ -568,7 +596,11 @@ export function DashboardPage() {
     setIsUpdating(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setUpdateError(getResponseMessage(response))
+      toast({
+        title: 'Member update failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
       return
     }
 
@@ -594,7 +626,11 @@ export function DashboardPage() {
       ...current,
     ])
     await loadProfileMembers()
-    setUpdateSuccess('Member updated successfully.')
+    toast({
+      title: 'Member updated',
+      description: 'The member was updated successfully.',
+      kind: 'success',
+    })
     setUpdateForm({
       id: '',
       offerId: '',
@@ -824,9 +860,6 @@ export function DashboardPage() {
                                 ))}
                               </select>
                             </label>
-                            {offersError ? <p className="text-sm text-red-300">{offersError}</p> : null}
-                            {createError ? <p className="text-sm text-red-300">{createError}</p> : null}
-                            {createSuccess ? <p className="text-sm text-emerald-300">{createSuccess}</p> : null}
                             <div className="grid gap-3 lg:grid-cols-2">
                               <input
                                 value={addForm.numberOfMonths}
@@ -919,8 +952,6 @@ export function DashboardPage() {
                               placeholder="Amount"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                             />
-                            {createError ? <p className="text-sm text-red-300">{createError}</p> : null}
-                            {createSuccess ? <p className="text-sm text-emerald-300">{createSuccess}</p> : null}
                             <button
                               type="button"
                               onClick={handleAdd}
@@ -970,9 +1001,6 @@ export function DashboardPage() {
                             ))}
                           </select>
                         </label>
-                        {offersError ? <p className="text-sm text-red-300">{offersError}</p> : null}
-                        {updateError ? <p className="text-sm text-red-300">{updateError}</p> : null}
-                        {updateSuccess ? <p className="text-sm text-emerald-300">{updateSuccess}</p> : null}
                         <div className="grid gap-3 lg:grid-cols-2">
                           <input
                             value={updateForm.numberOfMonths}
@@ -1029,10 +1057,6 @@ export function DashboardPage() {
                     className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)] lg:max-w-sm"
                   />
                 </div>
-
-                {profileMembersError ? (
-                  <p className="text-sm text-red-300">{profileMembersError}</p>
-                ) : null}
 
                 <div className="overflow-hidden rounded-[1.5rem] border border-white/10">
                   <div className="max-h-[760px] overflow-auto">

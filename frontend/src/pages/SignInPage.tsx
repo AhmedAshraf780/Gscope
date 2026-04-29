@@ -4,32 +4,33 @@ import { getResponseMessage, isResponseSuccess } from '../auth/authStorage'
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
+import { useToast } from '../toast/useToast'
 
 export function SignInPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setAuthenticatedFromResponse } = useAuth()
+  const { toast } = useToast()
   const [form, setForm] = useState({
     email: typeof location.state?.email === 'string' ? location.state.email : '',
     password: '',
   })
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
     setIsSubmitting(true)
 
     const response = await authService.login(form.email.trim(), form.password)
     setIsSubmitting(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setError(getResponseMessage(response))
+      toast({ title: 'Sign in failed', description: getResponseMessage(response), kind: 'error' })
       return
     }
 
     setAuthenticatedFromResponse(response)
+    toast({ title: 'Signed in', description: 'Welcome back.', kind: 'success' })
     const from = typeof location.state?.from === 'string' ? location.state.from : '/dashboard'
     navigate(from, { replace: true })
   }
@@ -79,9 +80,6 @@ export function SignInPage() {
             className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
           />
         </label>
-
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
-
         <button
           type="submit"
           disabled={isSubmitting}

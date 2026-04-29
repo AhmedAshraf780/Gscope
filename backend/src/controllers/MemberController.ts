@@ -8,7 +8,7 @@ export const addMember = async (req: Request, res: Response) => {
     const { name, phone, months, price, notes } = req.body;
     const { gym_id } = req.params;
 
-    if (!name || !phone || !months || !price || !notes || !gym_id) {
+    if (!name || !phone || !months || !price || !gym_id) {
       return res.status(400).json({ message: "All fields are required" });
     }
 

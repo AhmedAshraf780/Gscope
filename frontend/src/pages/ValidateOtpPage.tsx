@@ -4,14 +4,15 @@ import { getResponseMessage, isResponseSuccess } from '../auth/authStorage'
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
+import { useToast } from '../toast/useToast'
 
 const OTP_LENGTH = 6
 
 export function ValidateOtpPage() {
   const navigate = useNavigate()
   const { pendingOtpSession, clearOtpSession } = useAuth()
+  const { toast } = useToast()
   const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ''))
-  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleChange = (index: number, event: ChangeEvent<HTMLInputElement>) => {
@@ -37,16 +38,23 @@ export function ValidateOtpPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError('')
 
     if (!pendingOtpSession?.session) {
-      setError('Missing OTP session. Please sign up again.')
+      toast({
+        title: 'OTP validation failed',
+        description: 'Missing OTP session. Please sign up again.',
+        kind: 'error',
+      })
       return
     }
 
     const code = otp.join('')
     if (code.length !== OTP_LENGTH) {
-      setError('Enter the complete 6-digit code.')
+      toast({
+        title: 'OTP validation failed',
+        description: 'Enter the complete 6-digit code.',
+        kind: 'error',
+      })
       return
     }
 
@@ -55,12 +63,17 @@ export function ValidateOtpPage() {
     setIsSubmitting(false)
 
     if (!response || !isResponseSuccess(response)) {
-      setError(getResponseMessage(response))
+      toast({
+        title: 'OTP validation failed',
+        description: getResponseMessage(response),
+        kind: 'error',
+      })
       return
     }
 
     const email = pendingOtpSession.email
     clearOtpSession()
+    toast({ title: 'OTP validated', description: 'You can sign in now.', kind: 'success' })
     navigate('/signin', { replace: true, state: { email } })
   }
 
@@ -107,9 +120,6 @@ export function ValidateOtpPage() {
             ))}
           </div>
         </div>
-
-        {error ? <p className="text-sm text-red-300">{error}</p> : null}
-
         <button
           type="submit"
           disabled={isSubmitting}
