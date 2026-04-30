@@ -4,6 +4,7 @@ export const authService = {
     try {
       const res = await fetch(`${server}/api/v1/auth/signin`, {
         method: "POST",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json",
         },

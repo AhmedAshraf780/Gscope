@@ -3,7 +3,9 @@ const server = 'http://localhost:6969'
 export const memberService = {
   getMembers: async (gym_id: number) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/members`)
+      const res = await fetch(`${server}/api/v1/${gym_id}/members`, {
+        credentials: 'include',
+      })
       const data = await res.json()
       return data
     } catch (error) {
@@ -15,6 +17,7 @@ export const memberService = {
     try {
       const res = await fetch(`${server}/api/v1/${gym_id}/members`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -37,6 +40,7 @@ export const memberService = {
     try {
       const res = await fetch(`${server}/api/v1/${gym_id}/members/${id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -62,6 +66,7 @@ export const memberService = {
     try {
       const res = await fetch(`${server}/api/v1/${gym_id}/sessions`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -82,7 +87,9 @@ export const memberService = {
 
   getSessions: async (gym_id: number) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/sessions`)
+      const res = await fetch(`${server}/api/v1/${gym_id}/sessions`, {
+        credentials: 'include',
+      })
       const data = await res.json()
       return data
     } catch (error) {

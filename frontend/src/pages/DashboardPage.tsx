@@ -1,252 +1,259 @@
-import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { extractNestedRecord, getResponseMessage, isResponseSuccess } from '../auth/authStorage'
-import { memberService } from '../services/member.service'
-import { offersService } from '../services/offers.service'
-import { useAuth } from '../auth/useAuth'
-import { useToast } from '../toast/useToast'
+import {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  extractNestedRecord,
+  getResponseMessage,
+  isResponseSuccess,
+} from "../auth/authStorage";
+import { memberService } from "../services/member.service";
+import { offersService } from "../services/offers.service";
+import { logService } from "../services/logs.service";
+import { bankService } from "../services/bank.service";
+import { useAuth } from "../auth/useAuth";
+import { useToast } from "../toast/useToast";
 
 type Member = {
-  id: string
-  name: string
-  email: string
-  phone: string
-  plan: string
-  status: 'Active' | 'Paused' | 'Expired'
-  sessionsLeft: number
-  joinedAt: string
-  lastCheckIn: string
-}
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  plan: string;
+  status: "Active" | "Paused" | "Expired";
+  sessionsLeft: number;
+  joinedAt: string;
+  lastCheckIn: string;
+};
 
 type LogEntry = {
-  id: string
-  date: string
-  time: string
-  actor: string
-  action: string
-  details: string
-}
+  id: number;
+  member_id: number;
+  check_in_time: string;
+  gym_id: number;
+};
 
 type OfferOption = {
-  id: string
-  name: string
-}
+  id: string;
+  name: string;
+};
+
+type Offer = {
+  id: number;
+  name: string;
+  price: number;
+  offer_end_date: string;
+  created_at: string;
+};
 
 type ProfileMember = {
-  id: string
-  name: string
-  phone: string
-  months: string
-  amount: string
-  startDate: string
-  endDate: string
-  notes: string
-}
+  id: string;
+  name: string;
+  phone: string;
+  months: string;
+  amount: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+};
 
 const getMemberActivity = (endDate: string) => {
   if (!endDate) {
     return {
-      label: 'Active',
-      className: 'bg-emerald-400/14 text-emerald-200',
-    }
+      label: "Active",
+      className: "bg-emerald-400/14 text-emerald-200",
+    };
   }
 
-  const end = new Date(endDate)
+  const end = new Date(endDate);
   if (Number.isNaN(end.getTime())) {
     return {
-      label: 'Active',
-      className: 'bg-emerald-400/14 text-emerald-200',
-    }
+      label: "Active",
+      className: "bg-emerald-400/14 text-emerald-200",
+    };
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  end.setHours(0, 0, 0, 0)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
 
-  const diffInDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const diffInDays = Math.ceil(
+    (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   if (diffInDays < 0) {
     return {
-      label: 'Inactive',
-      className: 'bg-rose-400/14 text-rose-200',
-    }
+      label: "Inactive",
+      className: "bg-rose-400/14 text-rose-200",
+    };
   }
 
   if (diffInDays <= 3) {
     return {
-      label: 'Expiring Soon',
-      className: 'bg-amber-400/14 text-amber-200',
-    }
+      label: "Expiring Soon",
+      className: "bg-amber-400/14 text-amber-200",
+    };
   }
 
   return {
-    label: 'Active',
-    className: 'bg-emerald-400/14 text-emerald-200',
-  }
-}
+    label: "Active",
+    className: "bg-emerald-400/14 text-emerald-200",
+  };
+};
 
 const initialMembers: Member[] = [
   {
-    id: 'MBR-1001',
-    name: 'Omar Adel',
-    email: 'omar.adel@gscope.app',
-    phone: '+20 101 200 3001',
-    plan: 'Monthly Premium',
-    status: 'Active',
+    id: "MBR-1001",
+    name: "Omar Adel",
+    email: "omar.adel@gscope.app",
+    phone: "+20 101 200 3001",
+    plan: "Monthly Premium",
+    status: "Active",
     sessionsLeft: 10,
-    joinedAt: '2026-03-03',
-    lastCheckIn: '2026-04-29 08:12',
+    joinedAt: "2026-03-03",
+    lastCheckIn: "2026-04-29 08:12",
   },
   {
-    id: 'MBR-1002',
-    name: 'Mariam Samy',
-    email: 'mariam.samy@gscope.app',
-    phone: '+20 101 200 3002',
-    plan: '12 Sessions Pack',
-    status: 'Active',
+    id: "MBR-1002",
+    name: "Mariam Samy",
+    email: "mariam.samy@gscope.app",
+    phone: "+20 101 200 3002",
+    plan: "12 Sessions Pack",
+    status: "Active",
     sessionsLeft: 4,
-    joinedAt: '2026-02-18',
-    lastCheckIn: '2026-04-29 10:47',
+    joinedAt: "2026-02-18",
+    lastCheckIn: "2026-04-29 10:47",
   },
   {
-    id: 'MBR-1003',
-    name: 'Youssef Tarek',
-    email: 'youssef.tarek@gscope.app',
-    phone: '+20 101 200 3003',
-    plan: 'Quarterly Strength',
-    status: 'Paused',
+    id: "MBR-1003",
+    name: "Youssef Tarek",
+    email: "youssef.tarek@gscope.app",
+    phone: "+20 101 200 3003",
+    plan: "Quarterly Strength",
+    status: "Paused",
     sessionsLeft: 18,
-    joinedAt: '2026-01-21',
-    lastCheckIn: '2026-04-22 19:03',
+    joinedAt: "2026-01-21",
+    lastCheckIn: "2026-04-22 19:03",
   },
   {
-    id: 'MBR-1004',
-    name: 'Nadine Hossam',
-    email: 'nadine.hossam@gscope.app',
-    phone: '+20 101 200 3004',
-    plan: 'Monthly Standard',
-    status: 'Expired',
+    id: "MBR-1004",
+    name: "Nadine Hossam",
+    email: "nadine.hossam@gscope.app",
+    phone: "+20 101 200 3004",
+    plan: "Monthly Standard",
+    status: "Expired",
     sessionsLeft: 0,
-    joinedAt: '2025-12-09',
-    lastCheckIn: '2026-04-15 17:35',
+    joinedAt: "2025-12-09",
+    lastCheckIn: "2026-04-15 17:35",
   },
   {
-    id: 'MBR-1005',
-    name: 'Karim Essam',
-    email: 'karim.essam@gscope.app',
-    phone: '+20 101 200 3005',
-    plan: '8 Sessions Boxing',
-    status: 'Active',
+    id: "MBR-1005",
+    name: "Karim Essam",
+    email: "karim.essam@gscope.app",
+    phone: "+20 101 200 3005",
+    plan: "8 Sessions Boxing",
+    status: "Active",
     sessionsLeft: 2,
-    joinedAt: '2026-04-02',
-    lastCheckIn: '2026-04-29 07:55',
+    joinedAt: "2026-04-02",
+    lastCheckIn: "2026-04-29 07:55",
   },
-]
+];
 
-const initialLogs: LogEntry[] = [
-  {
-    id: 'LOG-001',
-    date: '2026-04-29',
-    time: '08:12',
-    actor: 'Front Desk',
-    action: 'Check-in',
-    details: 'Omar Adel entered with Monthly Premium plan.',
-  },
-  {
-    id: 'LOG-002',
-    date: '2026-04-29',
-    time: '09:00',
-    actor: 'Owner',
-    action: 'Update Member',
-    details: 'Mariam Samy sessions adjusted from 6 to 4.',
-  },
-  {
-    id: 'LOG-003',
-    date: '2026-04-29',
-    time: '10:47',
-    actor: 'Front Desk',
-    action: 'Check-in',
-    details: 'Mariam Samy checked in for HIIT class.',
-  },
-  {
-    id: 'LOG-004',
-    date: '2026-04-28',
-    time: '18:20',
-    actor: 'System',
-    action: 'Subscription Alert',
-    details: 'Nadine Hossam plan marked expired after failed renewal.',
-  },
-  {
-    id: 'LOG-005',
-    date: '2026-04-27',
-    time: '14:40',
-    actor: 'Owner',
-    action: 'Add Session',
-    details: 'Karim Essam received 8-session boxing package.',
-  },
-]
+const panes = [
+  "subscriptions",
+  "profiles",
+  "logs",
+  "analytics",
+  "bank",
+  "offers",
+] as const;
 
-const panes = ['subscriptions', 'profiles', 'logs', 'analytics'] as const
-
-type Pane = (typeof panes)[number]
-const subscriptionActions = ['checkin', 'create', 'update'] as const
-type SubscriptionAction = (typeof subscriptionActions)[number]
-const createModes = ['member', 'session'] as const
-type CreateMode = (typeof createModes)[number]
+type Pane = (typeof panes)[number];
+const subscriptionActions = ["checkin", "create", "update"] as const;
+type SubscriptionAction = (typeof subscriptionActions)[number];
+const createModes = ["member", "session"] as const;
+type CreateMode = (typeof createModes)[number];
 
 const metricCards = [
-  { label: 'Active subscriptions', value: '184', delta: '+12 this month' },
-  { label: 'Check-ins today', value: '347', delta: 'peak 6 PM - 8 PM' },
-  { label: 'Revenue this month', value: '$18.4k', delta: '+9.2% vs last month' },
-  { label: 'At-risk renewals', value: '23', delta: '7 need follow-up today' },
-]
+  { label: "Active subscriptions", value: "184", delta: "+12 this month" },
+  { label: "Check-ins today", value: "347", delta: "peak 6 PM - 8 PM" },
+  {
+    label: "Revenue this month",
+    value: "$18.4k",
+    delta: "+9.2% vs last month",
+  },
+  { label: "At-risk renewals", value: "23", delta: "7 need follow-up today" },
+];
 
 export function DashboardPage() {
-  const navigate = useNavigate()
-  const { logout } = useAuth()
-  const { toast } = useToast()
-  const [activePane, setActivePane] = useState<Pane>('subscriptions')
-  const [activeSubscriptionAction, setActiveSubscriptionAction] =
-    useState<SubscriptionAction>('checkin')
-  const [activeCreateMode, setActiveCreateMode] = useState<CreateMode>('member')
-  const [members, setMembers] = useState(initialMembers)
-  const [logs, setLogs] = useState(initialLogs)
-  const [profileFilter, setProfileFilter] = useState('')
-  const [logDate, setLogDate] = useState('2026-04-29')
-  const [checkInId, setCheckInId] = useState('')
-  const [offers, setOffers] = useState<OfferOption[]>([])
-  const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([])
-  const [isCreating, setIsCreating] = useState(false)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [addForm, setAddForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    offerId: '',
-    numberOfMonths: '',
-    amount: '',
-    notes: '',
-  })
-  const [sessionForm, setSessionForm] = useState({
-    name: '',
-    phone: '',
-    amount: '',
-    sessionType: 'gym',
-  })
-  const [updateForm, setUpdateForm] = useState({
-    id: '',
-    offerId: '',
-    numberOfMonths: '',
-    amount: '',
-    notes: '',
-  })
+  const navigate = useNavigate();
+  const { auth, logout } = useAuth();
+  const { toast } = useToast();
 
-  const deferredProfileFilter = useDeferredValue(profileFilter)
+  const gymId = (auth?.raw as any)?.gym_id || 1;
+
+  const [activePane, setActivePane] = useState<Pane>("subscriptions");
+  const [activeSubscriptionAction, setActiveSubscriptionAction] =
+    useState<SubscriptionAction>("checkin");
+  const [activeCreateMode, setActiveCreateMode] =
+    useState<CreateMode>("member");
+  const [members, setMembers] = useState(initialMembers);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [bankMoney, setBankMoney] = useState<number | null>(null);
+  const [profileFilter, setProfileFilter] = useState("");
+  const [logDate, setLogDate] = useState("2026-04-29");
+  const [logMemberIdFilter, setLogMemberIdFilter] = useState("");
+  const [lastCheckInInfo, setLastCheckInInfo] = useState<{
+    last_attendance?: string | null;
+    duration_in_days?: number | null;
+  } | null>(null);
+  const [checkInId, setCheckInId] = useState("");
+  const [offers, setOffers] = useState<OfferOption[]>([]);
+  const [allOffers, setAllOffers] = useState<Offer[]>([]);
+  const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
+  const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isCreatingOffer, setIsCreatingOffer] = useState(false);
+  const [offerForm, setOfferForm] = useState({
+    name: "",
+    price: "",
+    endDate: "",
+  });
+  const [addForm, setAddForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    offerId: "",
+    numberOfMonths: "",
+    amount: "",
+    notes: "",
+  });
+  const [sessionForm, setSessionForm] = useState({
+    name: "",
+    phone: "",
+    amount: "",
+    sessionType: "gym",
+  });
+  const [updateForm, setUpdateForm] = useState({
+    id: "",
+    offerId: "",
+    numberOfMonths: "",
+    amount: "",
+    notes: "",
+  });
+
+  const deferredProfileFilter = useDeferredValue(profileFilter);
 
   const filteredMembers = useMemo(() => {
-    const query = deferredProfileFilter.trim().toLowerCase()
+    const query = deferredProfileFilter.trim().toLowerCase();
     if (!query) {
-      return profileMembers
+      return profileMembers;
     }
 
     return profileMembers.filter(
@@ -254,358 +261,528 @@ export function DashboardPage() {
         member.id.toLowerCase().includes(query) ||
         member.name.toLowerCase().includes(query) ||
         member.phone.toLowerCase().includes(query),
-    )
-  }, [deferredProfileFilter, profileMembers])
+    );
+  }, [deferredProfileFilter, profileMembers]);
 
-  const filteredLogs = useMemo(
-    () => logs.filter((entry) => entry.date === logDate),
-    [logDate, logs],
-  )
+  const filteredLogs = useMemo(() => {
+    if (!logDate) return logs;
+    return logs.filter(
+      (entry) => entry.check_in_time && entry.check_in_time.startsWith(logDate),
+    );
+  }, [logDate, logs]);
 
-  const activeCount = members.filter((member) => member.status === 'Active').length
-  const expiringCount = members.filter((member) => member.status !== 'Active').length
-  const totalSessionsLeft = members.reduce((sum, member) => sum + member.sessionsLeft, 0)
+  const activeCount = members.filter(
+    (member) => member.status === "Active",
+  ).length;
+  const expiringCount = members.filter(
+    (member) => member.status !== "Active",
+  ).length;
+  const totalSessionsLeft = members.reduce(
+    (sum, member) => sum + member.sessionsLeft,
+    0,
+  );
 
   const loadProfileMembers = useCallback(async () => {
-    const response = await memberService.getMembers(1)
+    const response = await memberService.getMembers(gymId);
 
     const records = (() => {
       if (Array.isArray(response)) {
-        return response
+        return response;
       }
 
-      const nested = extractNestedRecord(response)
+      const nested = extractNestedRecord(response);
       if (nested && Array.isArray(nested.members)) {
-        return nested.members
+        return nested.members;
       }
 
       if (
         response &&
-        typeof response === 'object' &&
+        typeof response === "object" &&
         Array.isArray((response as { members?: unknown }).members)
       ) {
-        return (response as { members: unknown[] }).members
+        return (response as { members: unknown[] }).members;
       }
 
       if (
         response &&
-        typeof response === 'object' &&
+        typeof response === "object" &&
         Array.isArray((response as { data?: unknown }).data)
       ) {
-        return (response as { data: unknown[] }).data
+        return (response as { data: unknown[] }).data;
       }
 
-      return []
-    })()
+      return [];
+    })();
 
     const nextMembers = records
       .map((item, index) => {
-        if (!item || typeof item !== 'object') {
-          return null
+        if (!item || typeof item !== "object") {
+          return null;
         }
 
-        const candidate = item as Record<string, unknown>
+        const candidate = item as Record<string, unknown>;
         return {
           id:
-            typeof candidate.id === 'string'
+            typeof candidate.id === "string"
               ? candidate.id
-              : typeof candidate.id === 'number'
+              : typeof candidate.id === "number"
                 ? String(candidate.id)
-                : typeof candidate._id === 'string'
+                : typeof candidate._id === "string"
                   ? candidate._id
-                  : typeof candidate._id === 'number'
+                  : typeof candidate._id === "number"
                     ? String(candidate._id)
                     : `member-${index}`,
-          name: typeof candidate.name === 'string' ? candidate.name : '',
-          phone: typeof candidate.phone === 'string' ? candidate.phone : '',
+          name: typeof candidate.name === "string" ? candidate.name : "",
+          phone: typeof candidate.phone === "string" ? candidate.phone : "",
           months:
-            typeof candidate.months === 'string'
+            typeof candidate.months === "string"
               ? candidate.months
-              : typeof candidate.months === 'number'
+              : typeof candidate.months === "number"
                 ? String(candidate.months)
-                : '',
+                : "",
           amount:
-            typeof candidate.amount === 'string'
+            typeof candidate.amount === "string"
               ? candidate.amount
-              : typeof candidate.amount === 'number'
+              : typeof candidate.amount === "number"
                 ? String(candidate.amount)
-                : typeof candidate.price === 'string'
+                : typeof candidate.price === "string"
                   ? candidate.price
-                  : typeof candidate.price === 'number'
+                  : typeof candidate.price === "number"
                     ? String(candidate.price)
-                    : '',
-          startDate: typeof candidate.start_date === 'string' ? candidate.start_date : '',
-          endDate: typeof candidate.end_date === 'string' ? candidate.end_date : '',
-          notes: typeof candidate.notes === 'string' ? candidate.notes : '',
-        }
+                    : "",
+          startDate:
+            typeof candidate.start_date === "string"
+              ? candidate.start_date
+              : "",
+          endDate:
+            typeof candidate.end_date === "string" ? candidate.end_date : "",
+          notes: typeof candidate.notes === "string" ? candidate.notes : "",
+        };
       })
-      .filter((item): item is ProfileMember => item !== null)
+      .filter((item): item is ProfileMember => item !== null);
 
-    setProfileMembers(nextMembers)
+    setProfileMembers(nextMembers);
 
     if (!nextMembers.length) {
       toast({
-        title: 'Members not loaded',
-        description: 'No members were returned from the backend.',
-        kind: 'error',
-      })
+        title: "Members not loaded",
+        description: "No members were returned from the backend.",
+        kind: "error",
+      });
     }
-  }, [toast])
+  }, [toast, gymId]);
 
   useEffect(() => {
     const loadOffers = async () => {
-      const response = await offersService.getOffers()
+      const response = await offersService.getOffers(gymId);
 
       const records = (() => {
         if (Array.isArray(response)) {
-          return response
+          return response;
         }
 
-        const nested = extractNestedRecord(response)
+        const nested = extractNestedRecord(response);
         if (nested && Array.isArray(nested.offers)) {
-          return nested.offers
+          return nested.offers;
         }
 
-        if (response && typeof response === 'object' && Array.isArray((response as { offers?: unknown }).offers)) {
-          return (response as { offers: unknown[] }).offers
+        if (
+          response &&
+          typeof response === "object" &&
+          Array.isArray((response as { offers?: unknown }).offers)
+        ) {
+          return (response as { offers: unknown[] }).offers;
         }
 
-        if (response && typeof response === 'object' && Array.isArray((response as { data?: unknown }).data)) {
-          return (response as { data: unknown[] }).data
+        if (
+          response &&
+          typeof response === "object" &&
+          Array.isArray((response as { data?: unknown }).data)
+        ) {
+          return (response as { data: unknown[] }).data;
         }
 
-        return []
-      })()
+        return [];
+      })();
 
       const nextOffers = records
         .map((item) => {
-          if (!item || typeof item !== 'object') {
-            return null
+          if (!item || typeof item !== "object") {
+            return null;
           }
 
-          const candidate = item as Record<string, unknown>
-          const id = candidate.id ?? candidate._id ?? candidate.offerId ?? candidate.value
-          const name = candidate.name ?? candidate.title ?? candidate.offerName ?? candidate.label
+          const candidate = item as Record<string, unknown>;
+          const id =
+            candidate.id ??
+            candidate._id ??
+            candidate.offerId ??
+            candidate.value;
+          const name =
+            candidate.name ??
+            candidate.title ??
+            candidate.offerName ??
+            candidate.label;
 
-          if (typeof id !== 'string' || typeof name !== 'string') {
-            return null
+          if (typeof id !== "string" || typeof name !== "string") {
+            return null;
           }
 
-          return { id, name }
+          return { id, name };
         })
-        .filter((item): item is OfferOption => item !== null)
+        .filter((item): item is OfferOption => item !== null);
 
-      setOffers(nextOffers)
+      setOffers(nextOffers);
 
       if (!nextOffers.length) {
         toast({
-          title: 'Offers not loaded',
-          description: 'No offers were returned from the backend.',
-          kind: 'error',
-        })
+          title: "Offers not loaded",
+          description: "No offers were returned from the backend.",
+          kind: "error",
+        });
       }
+    };
+
+    void loadOffers();
+  }, [toast, gymId]);
+
+  const loadAllOffers = useCallback(async () => {
+    const response = await offersService.getOffers(gymId);
+    if (response && Array.isArray(response)) {
+      setAllOffers(response);
+    } else if (
+      response &&
+      typeof response === "object" &&
+      Array.isArray(response.offers)
+    ) {
+      setAllOffers(response.offers);
+    } else if (
+      response &&
+      typeof response === "object" &&
+      Array.isArray(response.data)
+    ) {
+      setAllOffers(response.data);
+    }
+  }, [gymId]);
+
+  const loadAvailableOffers = useCallback(async () => {
+    const response = await offersService.getAvailableOffers(gymId);
+    if (response && Array.isArray(response)) {
+      setAvailableOffers(response);
+    } else if (
+      response &&
+      typeof response === "object" &&
+      Array.isArray(response.offers)
+    ) {
+      setAvailableOffers(response.offers);
+    } else if (
+      response &&
+      typeof response === "object" &&
+      Array.isArray(response.data)
+    ) {
+      setAvailableOffers(response.data);
+    }
+  }, [gymId]);
+
+  const handleCreateOffer = async () => {
+    if (!offerForm.name || !offerForm.price || !offerForm.endDate) {
+      toast({
+        title: "Offer creation failed",
+        description: "Name, price, and end date are required.",
+        kind: "error",
+      });
+      return;
     }
 
-    void loadOffers()
-  }, [toast])
+    setIsCreatingOffer(true);
+    const response = await offersService.createOffer(
+      gymId,
+      offerForm.name,
+      Number(offerForm.price),
+      offerForm.endDate,
+    );
+    setIsCreatingOffer(false);
+
+    if (response && (response.ok || response.id)) {
+      toast({
+        title: "Offer created",
+        description: "The offer was saved successfully.",
+        kind: "success",
+      });
+      setOfferForm({ name: "", price: "", endDate: "" });
+      void loadAllOffers();
+      void loadAvailableOffers();
+    } else {
+      toast({
+        title: "Offer creation failed",
+        description: response?.message || "Could not create offer.",
+        kind: "error",
+      });
+    }
+  };
+
+  const loadLogs = useCallback(async () => {
+    const data = await logService.getLogs(gymId);
+    if (Array.isArray(data)) {
+      setLogs(data);
+    } else if (
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as any).data)
+    ) {
+      setLogs((data as any).data);
+    } else if (
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as any).logs)
+    ) {
+      setLogs((data as any).logs);
+    }
+  }, [gymId]);
+
+  const loadBankData = useCallback(async () => {
+    const data = await bankService.getMoney(gymId);
+    if (data && data.money !== undefined) {
+      setBankMoney(data.money);
+    }
+  }, [gymId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void loadProfileMembers()
-    }, 0)
+      void loadProfileMembers();
+      void loadLogs();
+      void loadBankData();
+      void loadAllOffers();
+      void loadAvailableOffers();
+    }, 0);
 
-    return () => window.clearTimeout(timeoutId)
-  }, [loadProfileMembers])
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    loadProfileMembers,
+    loadLogs,
+    loadBankData,
+    loadAllOffers,
+    loadAvailableOffers,
+  ]);
 
-  const createLog = (action: string, details: string) => {
-    const nextIndex = logs.length + 1
-    return {
-      id: `LOG-${String(nextIndex).padStart(3, '0')}`,
-      date: '2026-04-29',
-      time: '12:00',
-      actor: 'Owner',
-      action,
-      details,
+  useEffect(() => {
+    if (!logMemberIdFilter) {
+      setLastCheckInInfo(null);
+      void loadLogs();
+      return;
     }
-  }
 
-  const handleCheckIn = () => {
-    const member = members.find((item) => item.id.toLowerCase() === checkInId.trim().toLowerCase())
-    if (!member) {
-      return
-    }
+    const timer = setTimeout(async () => {
+      const memberId = Number(logMemberIdFilter.trim());
+      if (isNaN(memberId) || memberId <= 0) return;
 
-    setMembers((current) =>
-      current.map((item) =>
-        item.id === member.id ? { ...item, lastCheckIn: '2026-04-29 12:00' } : item,
-      ),
-    )
-    setLogs((current) => [
-      createLog('Check-in', `${member.name} checked in using member id ${member.id}.`),
-      ...current,
-    ])
-    setCheckInId('')
-  }
-
-  const handleAdd = async () => {
-    if (activeCreateMode === 'session') {
-      if (!sessionForm.name || !sessionForm.phone || !sessionForm.amount) {
-        toast({
-          title: 'Session creation failed',
-          description: 'Name, phone, and amount are required.',
-          kind: 'error',
-        })
-        return
+      const logsData = await logService.getLogsByMemberId(gymId, memberId);
+      if (Array.isArray(logsData)) {
+        setLogs(logsData);
+      } else if (
+        logsData &&
+        typeof logsData === "object" &&
+        Array.isArray((logsData as any).data)
+      ) {
+        setLogs((logsData as any).data);
+      } else if (
+        logsData &&
+        typeof logsData === "object" &&
+        Array.isArray((logsData as any).logs)
+      ) {
+        setLogs((logsData as any).logs);
+      } else {
+        setLogs([]);
       }
 
-      setIsCreating(true)
+      const lastCheckIn = await logService.getLastCheckIn(gymId, memberId);
+      if (lastCheckIn && !lastCheckIn.message) {
+        setLastCheckInInfo(lastCheckIn);
+      } else {
+        setLastCheckInInfo(null);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [logMemberIdFilter, loadLogs, gymId]);
+
+  const handleCheckIn = async () => {
+    const memberIdNum = Number(checkInId.trim());
+    if (!memberIdNum || isNaN(memberIdNum)) {
+      toast({
+        title: "Check-in failed",
+        description: "Invalid member ID format. Please use the numeric ID.",
+        kind: "error",
+      });
+      return;
+    }
+
+    const res = await logService.createLog(gymId, memberIdNum);
+    if (res && res.message === "Log created successfully") {
+      toast({
+        title: "Check-in successful",
+        description: `Member ${memberIdNum} checked in.`,
+        kind: "success",
+      });
+      await loadLogs();
+      setCheckInId("");
+    } else {
+      toast({
+        title: "Check-in failed",
+        description: res?.message || "Could not check in member.",
+        kind: "error",
+      });
+    }
+  };
+
+  const handleAdd = async () => {
+    if (activeCreateMode === "session") {
+      if (!sessionForm.name || !sessionForm.phone || !sessionForm.amount) {
+        toast({
+          title: "Session creation failed",
+          description: "Name, phone, and amount are required.",
+          kind: "error",
+        });
+        return;
+      }
+
+      setIsCreating(true);
       const response = await memberService.addSession(
-        1,
+        gymId,
         sessionForm.name.trim(),
         sessionForm.phone.trim(),
-        sessionForm.sessionType === 'else' ? 'swimming' : sessionForm.sessionType,
+        sessionForm.sessionType === "else"
+          ? "swimming"
+          : sessionForm.sessionType,
         Number(sessionForm.amount) || 0,
-      )
-      setIsCreating(false)
+      );
+      setIsCreating(false);
 
       if (!response || !isResponseSuccess(response)) {
         toast({
-          title: 'Session creation failed',
+          title: "Session creation failed",
           description: getResponseMessage(response),
-          kind: 'error',
-        })
-        return
+          kind: "error",
+        });
+        return;
       }
-
-      setLogs((current) => [
-        createLog(
-          'Create Session',
-          `${sessionForm.name} booked a ${sessionForm.sessionType} session for ${sessionForm.amount}.`,
-        ),
-        ...current,
-      ])
       toast({
-        title: 'Session created',
-        description: 'The session was saved successfully.',
-        kind: 'success',
-      })
+        title: "Session created",
+        description: "The session was saved successfully.",
+        kind: "success",
+      });
       setSessionForm({
-        name: '',
-        phone: '',
-        amount: '',
-        sessionType: 'gym',
-      })
-      return
+        name: "",
+        phone: "",
+        amount: "",
+        sessionType: "gym",
+      });
+      return;
     }
 
     if (!addForm.name || !addForm.phone) {
       toast({
-        title: 'Member creation failed',
-        description: 'Name and phone are required.',
-        kind: 'error',
-      })
-      return
+        title: "Member creation failed",
+        description: "Name and phone are required.",
+        kind: "error",
+      });
+      return;
     }
 
-    setIsCreating(true)
+    setIsCreating(true);
     const response = await memberService.addMember(
-      1,
+      gymId,
       addForm.name.trim(),
       addForm.phone.trim(),
       Number(addForm.numberOfMonths) || 0,
       Number(addForm.amount) || 0,
       addForm.notes.trim(),
-    )
-    setIsCreating(false)
+    );
+    setIsCreating(false);
 
     if (!response || !isResponseSuccess(response)) {
       toast({
-        title: 'Member creation failed',
+        title: "Member creation failed",
         description: getResponseMessage(response),
-        kind: 'error',
-      })
-      return
+        kind: "error",
+      });
+      return;
     }
 
-    const selectedOffer = offers.find((offer) => offer.id === addForm.offerId)
-    const generatedId = `MBR-${String(members.length + 1001)}`
+    const selectedOffer = offers.find((offer) => offer.id === addForm.offerId);
+    const generatedId = `MBR-${String(members.length + 1001)}`;
     const newMember: Member = {
       id: generatedId,
       name: addForm.name,
-      email: addForm.email || `${addForm.name.toLowerCase().replace(/\s+/g, '.')}@gscope.app`,
+      email:
+        addForm.email ||
+        `${addForm.name.toLowerCase().replace(/\s+/g, ".")}@gscope.app`,
       phone: addForm.phone,
-      plan: selectedOffer?.name || 'Custom Offer',
-      status: 'Active',
+      plan: selectedOffer?.name || "Custom Offer",
+      status: "Active",
       sessionsLeft: Number(addForm.numberOfMonths) || 0,
-      joinedAt: '2026-04-29',
-      lastCheckIn: 'Never',
-    }
+      joinedAt: "2026-04-29",
+      lastCheckIn: "Never",
+    };
 
-    setMembers((current) => [newMember, ...current])
-    setLogs((current) => [
-      createLog(
-        'Add Member',
-        `${newMember.name} was created with offer ${newMember.plan} for ${addForm.numberOfMonths || '0'} months.`,
-      ),
-      ...current,
-    ])
-    await loadProfileMembers()
+    setMembers((current) => [newMember, ...current]);
+    await loadProfileMembers();
     toast({
-      title: 'Member created',
-      description: 'The member was saved successfully.',
-      kind: 'success',
-    })
+      title: "Member created",
+      description: "The member was saved successfully.",
+      kind: "success",
+    });
     setAddForm({
-      name: '',
-      email: '',
-      phone: '',
-      offerId: '',
-      numberOfMonths: '',
-      amount: '',
-      notes: '',
-    })
-  }
+      name: "",
+      email: "",
+      phone: "",
+      offerId: "",
+      numberOfMonths: "",
+      amount: "",
+      notes: "",
+    });
+  };
 
   const handleUpdate = async () => {
     if (!updateForm.id || !updateForm.numberOfMonths || !updateForm.amount) {
       toast({
-        title: 'Member update failed',
-        description: 'ID, number of months, and amount are required.',
-        kind: 'error',
-      })
-      return
+        title: "Member update failed",
+        description: "ID, number of months, and amount are required.",
+        kind: "error",
+      });
+      return;
     }
 
-    const id = Number(updateForm.id)
+    const id = Number(updateForm.id);
     if (Number.isNaN(id)) {
       toast({
-        title: 'Member update failed',
-        description: 'Member ID must be a valid number.',
-        kind: 'error',
-      })
-      return
+        title: "Member update failed",
+        description: "Member ID must be a valid number.",
+        kind: "error",
+      });
+      return;
     }
 
-    setIsUpdating(true)
+    setIsUpdating(true);
     const response = await memberService.updateMember(
-      1,
+      gymId,
       id,
       Number(updateForm.numberOfMonths) || 0,
       Number(updateForm.amount) || 0,
-    )
-    setIsUpdating(false)
+    );
+    setIsUpdating(false);
 
     if (!response || !isResponseSuccess(response)) {
       toast({
-        title: 'Member update failed',
+        title: "Member update failed",
         description: getResponseMessage(response),
-        kind: 'error',
-      })
-      return
+        kind: "error",
+      });
+      return;
     }
 
-    const selectedOffer = offers.find((offer) => offer.id === updateForm.offerId)
-    const profileMember = profileMembers.find((member) => member.id === updateForm.id)
+    const selectedOffer = offers.find(
+      (offer) => offer.id === updateForm.offerId,
+    );
 
     setMembers((current) =>
       current.map((item) =>
@@ -613,37 +790,31 @@ export function DashboardPage() {
           ? {
               ...item,
               plan: selectedOffer?.name || item.plan,
-              sessionsLeft: Number(updateForm.numberOfMonths) || item.sessionsLeft,
+              sessionsLeft:
+                Number(updateForm.numberOfMonths) || item.sessionsLeft,
             }
           : item,
       ),
-    )
-    setLogs((current) => [
-      createLog(
-        'Update Member',
-        `${profileMember?.name || `Member ${updateForm.id}`} subscription updated successfully.`,
-      ),
-      ...current,
-    ])
-    await loadProfileMembers()
+    );
+    await loadProfileMembers();
     toast({
-      title: 'Member updated',
-      description: 'The member was updated successfully.',
-      kind: 'success',
-    })
+      title: "Member updated",
+      description: "The member was updated successfully.",
+      kind: "success",
+    });
     setUpdateForm({
-      id: '',
-      offerId: '',
-      numberOfMonths: '',
-      amount: '',
-      notes: '',
-    })
-  }
+      id: "",
+      offerId: "",
+      numberOfMonths: "",
+      amount: "",
+      notes: "",
+    });
+  };
 
   const handleLogout = () => {
-    logout()
-    navigate('/signin', { replace: true })
-  }
+    logout();
+    navigate("/signin", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
@@ -664,31 +835,45 @@ export function DashboardPage() {
                 Run the gym from one control surface.
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)] sm:text-base">
-                Manage subscriptions, profiles, logs, and analytics with the same system your front
-                desk and staff rely on every day.
+                Manage subscriptions, profiles, logs, and analytics with the
+                same system your front desk and staff rely on every day.
               </p>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] xl:grid-cols-1">
               <div className="grid gap-3 sm:grid-cols-3">
                 <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Members</p>
-                  <p className="mt-3 font-display text-3xl text-white">{members.length}</p>
-                  <p className="mt-1 text-sm text-[var(--sand)]">{activeCount} active now</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                    Members
+                  </p>
+                  <p className="mt-3 font-display text-3xl text-white">
+                    {members.length}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--sand)]">
+                    {activeCount} active now
+                  </p>
                 </article>
                 <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                     Watchlist
                   </p>
-                  <p className="mt-3 font-display text-3xl text-white">{expiringCount}</p>
-                  <p className="mt-1 text-sm text-[var(--sand)]">paused or expired</p>
+                  <p className="mt-3 font-display text-3xl text-white">
+                    {expiringCount}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--sand)]">
+                    paused or expired
+                  </p>
                 </article>
                 <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
                     Sessions Left
                   </p>
-                  <p className="mt-3 font-display text-3xl text-white">{totalSessionsLeft}</p>
-                  <p className="mt-1 text-sm text-[var(--sand)]">across all members</p>
+                  <p className="mt-3 font-display text-3xl text-white">
+                    {totalSessionsLeft}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--sand)]">
+                    across all members
+                  </p>
                 </article>
               </div>
 
@@ -718,7 +903,9 @@ export function DashboardPage() {
               className="rounded-[1.5rem] border border-[var(--line)] bg-white/6 p-4"
             >
               <p className="text-sm text-[var(--muted)]">{card.label}</p>
-              <p className="mt-2 font-display text-3xl text-white">{card.value}</p>
+              <p className="mt-2 font-display text-3xl text-white">
+                {card.value}
+              </p>
               <p className="mt-2 text-sm text-[var(--sand)]">{card.delta}</p>
             </article>
           ))}
@@ -733,11 +920,11 @@ export function DashboardPage() {
                   type="button"
                   onClick={() => setActivePane(pane)}
                   className={[
-                    'w-full rounded-2xl px-4 py-3 text-left text-sm font-medium capitalize transition',
+                    "w-full rounded-2xl px-4 py-3 text-left text-sm font-medium capitalize transition",
                     activePane === pane
-                      ? 'bg-[var(--accent)] text-[#08111f]'
-                      : 'bg-[#09111d] text-[var(--muted)] hover:text-white',
-                  ].join(' ')}
+                      ? "bg-[var(--accent)] text-[#08111f]"
+                      : "bg-[#09111d] text-[var(--muted)] hover:text-white",
+                  ].join(" ")}
                 >
                   {pane}
                 </button>
@@ -746,7 +933,7 @@ export function DashboardPage() {
           </aside>
 
           <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-4 sm:p-5">
-            {activePane === 'subscriptions' ? (
+            {activePane === "subscriptions" ? (
               <section className="space-y-6">
                 <div className="mx-auto w-full max-w-4xl space-y-4">
                   <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-4">
@@ -757,25 +944,27 @@ export function DashboardPage() {
                           type="button"
                           onClick={() => setActiveSubscriptionAction(action)}
                           className={[
-                            'rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition',
+                            "rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition",
                             activeSubscriptionAction === action
-                              ? 'bg-[var(--accent)] text-[#08111f]'
-                              : 'bg-white/6 text-[var(--muted)] hover:text-white',
-                          ].join(' ')}
+                              ? "bg-[var(--accent)] text-[#08111f]"
+                              : "bg-white/6 text-[var(--muted)] hover:text-white",
+                          ].join(" ")}
                         >
-                          {action === 'checkin'
-                            ? 'Check in'
-                            : action === 'create'
-                              ? 'Create'
-                              : 'Update'}
+                          {action === "checkin"
+                            ? "Check in"
+                            : action === "create"
+                              ? "Create"
+                              : "Update"}
                         </button>
                       ))}
                     </div>
 
-                    {activeSubscriptionAction === 'checkin' ? (
+                    {activeSubscriptionAction === "checkin" ? (
                       <div className="mt-5 space-y-3">
                         <div>
-                          <h3 className="font-display text-2xl text-white">Check in a member</h3>
+                          <h3 className="font-display text-2xl text-white">
+                            Check in a member
+                          </h3>
                           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                             Enter a member id and record the visit instantly.
                           </p>
@@ -796,7 +985,7 @@ export function DashboardPage() {
                       </div>
                     ) : null}
 
-                    {activeSubscriptionAction === 'create' ? (
+                    {activeSubscriptionAction === "create" ? (
                       <div className="mt-5 space-y-3">
                         <div className="grid gap-2 sm:grid-cols-2">
                           {createModes.map((mode) => (
@@ -805,29 +994,37 @@ export function DashboardPage() {
                               type="button"
                               onClick={() => setActiveCreateMode(mode)}
                               className={[
-                                'rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition',
+                                "rounded-2xl px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition",
                                 activeCreateMode === mode
-                                  ? 'bg-[var(--accent)] text-[#08111f]'
-                                  : 'bg-white/6 text-[var(--muted)] hover:text-white',
-                              ].join(' ')}
+                                  ? "bg-[var(--accent)] text-[#08111f]"
+                                  : "bg-white/6 text-[var(--muted)] hover:text-white",
+                              ].join(" ")}
                             >
-                              {mode === 'member' ? 'Create member' : 'Create session'}
+                              {mode === "member"
+                                ? "Create member"
+                                : "Create session"}
                             </button>
                           ))}
                         </div>
 
-                        {activeCreateMode === 'member' ? (
+                        {activeCreateMode === "member" ? (
                           <>
                             <div>
-                              <h3 className="font-display text-2xl text-white">Create a member</h3>
+                              <h3 className="font-display text-2xl text-white">
+                                Create a member
+                              </h3>
                               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                                Create a member subscription record with the selected offer details.
+                                Create a member subscription record with the
+                                selected offer details.
                               </p>
                             </div>
                             <input
                               value={addForm.name}
                               onChange={(event) =>
-                                setAddForm((current) => ({ ...current, name: event.target.value }))
+                                setAddForm((current) => ({
+                                  ...current,
+                                  name: event.target.value,
+                                }))
                               }
                               placeholder="Name"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -835,13 +1032,18 @@ export function DashboardPage() {
                             <input
                               value={addForm.phone}
                               onChange={(event) =>
-                                setAddForm((current) => ({ ...current, phone: event.target.value }))
+                                setAddForm((current) => ({
+                                  ...current,
+                                  phone: event.target.value,
+                                }))
                               }
                               placeholder="Phone"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                             />
                             <label className="block">
-                              <span className="mb-2 block text-sm text-[var(--muted)]">Offers</span>
+                              <span className="mb-2 block text-sm text-[var(--muted)]">
+                                Offers
+                              </span>
                               <select
                                 value={addForm.offerId}
                                 onChange={(event) =>
@@ -875,7 +1077,10 @@ export function DashboardPage() {
                               <input
                                 value={addForm.amount}
                                 onChange={(event) =>
-                                  setAddForm((current) => ({ ...current, amount: event.target.value }))
+                                  setAddForm((current) => ({
+                                    ...current,
+                                    amount: event.target.value,
+                                  }))
                                 }
                                 placeholder="Amount of money"
                                 className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -884,7 +1089,10 @@ export function DashboardPage() {
                             <textarea
                               value={addForm.notes}
                               onChange={(event) =>
-                                setAddForm((current) => ({ ...current, notes: event.target.value }))
+                                setAddForm((current) => ({
+                                  ...current,
+                                  notes: event.target.value,
+                                }))
                               }
                               placeholder="Notes"
                               rows={4}
@@ -896,23 +1104,29 @@ export function DashboardPage() {
                               disabled={isCreating}
                               className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
                             >
-                              {isCreating ? 'Creating...' : 'Create member'}
+                              {isCreating ? "Creating..." : "Create member"}
                             </button>
                           </>
                         ) : null}
 
-                        {activeCreateMode === 'session' ? (
+                        {activeCreateMode === "session" ? (
                           <>
                             <div>
-                              <h3 className="font-display text-2xl text-white">Create a session</h3>
+                              <h3 className="font-display text-2xl text-white">
+                                Create a session
+                              </h3>
                               <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                                Record a one-off session sale with its type and amount.
+                                Record a one-off session sale with its type and
+                                amount.
                               </p>
                             </div>
                             <input
                               value={sessionForm.name}
                               onChange={(event) =>
-                                setSessionForm((current) => ({ ...current, name: event.target.value }))
+                                setSessionForm((current) => ({
+                                  ...current,
+                                  name: event.target.value,
+                                }))
                               }
                               placeholder="Name"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -920,7 +1134,10 @@ export function DashboardPage() {
                             <input
                               value={sessionForm.phone}
                               onChange={(event) =>
-                                setSessionForm((current) => ({ ...current, phone: event.target.value }))
+                                setSessionForm((current) => ({
+                                  ...current,
+                                  phone: event.target.value,
+                                }))
                               }
                               placeholder="Phone"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -947,7 +1164,10 @@ export function DashboardPage() {
                             <input
                               value={sessionForm.amount}
                               onChange={(event) =>
-                                setSessionForm((current) => ({ ...current, amount: event.target.value }))
+                                setSessionForm((current) => ({
+                                  ...current,
+                                  amount: event.target.value,
+                                }))
                               }
                               placeholder="Amount"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -958,17 +1178,19 @@ export function DashboardPage() {
                               disabled={isCreating}
                               className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
                             >
-                              {isCreating ? 'Creating...' : 'Create session'}
+                              {isCreating ? "Creating..." : "Create session"}
                             </button>
                           </>
                         ) : null}
                       </div>
                     ) : null}
 
-                    {activeSubscriptionAction === 'update' ? (
+                    {activeSubscriptionAction === "update" ? (
                       <div className="mt-5 space-y-3">
                         <div>
-                          <h3 className="font-display text-2xl text-white">Update a member</h3>
+                          <h3 className="font-display text-2xl text-white">
+                            Update a member
+                          </h3>
                           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
                             Update the selected member subscription details.
                           </p>
@@ -976,13 +1198,18 @@ export function DashboardPage() {
                         <input
                           value={updateForm.id}
                           onChange={(event) =>
-                            setUpdateForm((current) => ({ ...current, id: event.target.value }))
+                            setUpdateForm((current) => ({
+                              ...current,
+                              id: event.target.value,
+                            }))
                           }
                           placeholder="ID"
                           className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                         />
                         <label className="block">
-                          <span className="mb-2 block text-sm text-[var(--muted)]">Offers</span>
+                          <span className="mb-2 block text-sm text-[var(--muted)]">
+                            Offers
+                          </span>
                           <select
                             value={updateForm.offerId}
                             onChange={(event) =>
@@ -1016,7 +1243,10 @@ export function DashboardPage() {
                           <input
                             value={updateForm.amount}
                             onChange={(event) =>
-                              setUpdateForm((current) => ({ ...current, amount: event.target.value }))
+                              setUpdateForm((current) => ({
+                                ...current,
+                                amount: event.target.value,
+                              }))
                             }
                             placeholder="Amount of money"
                             className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -1028,7 +1258,7 @@ export function DashboardPage() {
                           disabled={isUpdating}
                           className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
                         >
-                          {isUpdating ? 'Updating...' : 'Update member'}
+                          {isUpdating ? "Updating..." : "Update member"}
                         </button>
                       </div>
                     ) : null}
@@ -1037,7 +1267,7 @@ export function DashboardPage() {
               </section>
             ) : null}
 
-            {activePane === 'profiles' ? (
+            {activePane === "profiles" ? (
               <section className="space-y-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
@@ -1051,7 +1281,9 @@ export function DashboardPage() {
                   <input
                     value={profileFilter}
                     onChange={(event) =>
-                      startTransition(() => setProfileFilter(event.target.value))
+                      startTransition(() =>
+                        setProfileFilter(event.target.value),
+                      )
                     }
                     placeholder="Filter by id, name, or phone"
                     className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)] lg:max-w-sm"
@@ -1064,17 +1296,20 @@ export function DashboardPage() {
                       <thead className="sticky top-0 bg-[#101827] text-[var(--sand)]">
                         <tr>
                           {[
-                            'ID',
-                            'Name',
-                            'Phone',
-                            'Active',
-                            'Months',
-                            'Amount',
-                            'Start Date',
-                            'End Date',
-                            'Notes',
+                            "ID",
+                            "Name",
+                            "Phone",
+                            "Active",
+                            "Months",
+                            "Amount",
+                            "Start Date",
+                            "End Date",
+                            "Notes",
                           ].map((column) => (
-                            <th key={column} className="px-4 py-4 font-medium whitespace-nowrap">
+                            <th
+                              key={column}
+                              className="px-4 py-4 font-medium whitespace-nowrap"
+                            >
                               {column}
                             </th>
                           ))}
@@ -1082,32 +1317,53 @@ export function DashboardPage() {
                       </thead>
                       <tbody>
                         {filteredMembers.map((member) => (
-                          <tr key={member.id} className="border-t border-white/8 text-[var(--muted)]">
+                          <tr
+                            key={member.id}
+                            className="border-t border-white/8 text-[var(--muted)]"
+                          >
                             {(() => {
-                              const activity = getMemberActivity(member.endDate)
+                              const activity = getMemberActivity(
+                                member.endDate,
+                              );
 
                               return (
                                 <>
-                            <td className="px-4 py-4 whitespace-nowrap text-white">{member.id}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.name}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.phone}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">
-                              <span
-                                className={[
-                                  'rounded-full px-3 py-1 text-xs font-medium',
-                                  activity.className,
-                                ].join(' ')}
-                              >
-                                {activity.label}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.months}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.amount}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.startDate}</td>
-                            <td className="px-4 py-4 whitespace-nowrap">{member.endDate}</td>
-                            <td className="px-4 py-4">{member.notes || '-'}</td>
+                                  <td className="px-4 py-4 whitespace-nowrap text-white">
+                                    {member.id}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {member.name}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {member.phone}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <span
+                                      className={[
+                                        "rounded-full px-3 py-1 text-xs font-medium",
+                                        activity.className,
+                                      ].join(" ")}
+                                    >
+                                      {activity.label}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {member.months}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {member.amount}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {member.startDate}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {member.endDate}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    {member.notes || "-"}
+                                  </td>
                                 </>
-                              )
+                              );
                             })()}
                           </tr>
                         ))}
@@ -1118,7 +1374,7 @@ export function DashboardPage() {
               </section>
             ) : null}
 
-            {activePane === 'logs' ? (
+            {activePane === "logs" ? (
               <section className="space-y-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
@@ -1126,48 +1382,123 @@ export function DashboardPage() {
                       Logs pane
                     </p>
                     <h2 className="mt-3 font-display text-3xl text-white">
-                      Review operational logs for a specific day.
+                      Review operational logs by day or member.
                     </h2>
                   </div>
-                  <input
-                    type="date"
-                    value={logDate}
-                    onChange={(event) => setLogDate(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)] lg:max-w-xs"
-                  />
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      placeholder="Filter by Member ID"
+                      value={logMemberIdFilter}
+                      onChange={(event) =>
+                        setLogMemberIdFilter(event.target.value)
+                      }
+                      className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)] lg:max-w-[180px]"
+                    />
+                    <input
+                      type="date"
+                      value={logDate}
+                      onChange={(event) => setLogDate(event.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)] lg:max-w-[160px]"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  {filteredLogs.length ? (
-                    filteredLogs.map((entry) => (
-                      <article
-                        key={entry.id}
-                        className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.22em] text-[var(--sand)]">
-                              {entry.time} • {entry.actor}
-                            </p>
-                            <h3 className="mt-2 font-display text-2xl text-white">{entry.action}</h3>
-                          </div>
-                          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-[var(--muted)]">
-                            {entry.id}
+                {lastCheckInInfo && (
+                  <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-[var(--muted)]">
+                          Last check-in for Member {logMemberIdFilter}
+                        </p>
+                        <p className="mt-2 font-display text-xl text-white">
+                          {lastCheckInInfo.last_attendance
+                            ? new Date(
+                                lastCheckInInfo.last_attendance,
+                              ).toLocaleString()
+                            : "No check-ins found"}
+                        </p>
+                      </div>
+                      {lastCheckInInfo.duration_in_days !== undefined &&
+                        lastCheckInInfo.duration_in_days !== null && (
+                          <span className="rounded-full bg-blue-400/14 px-3 py-1 text-xs text-blue-200">
+                            {lastCheckInInfo.duration_in_days === 0
+                              ? "Today"
+                              : `${lastCheckInInfo.duration_in_days} days ago`}
                           </span>
-                        </div>
-                        <p className="mt-4 text-sm leading-7 text-[var(--muted)]">{entry.details}</p>
-                      </article>
-                    ))
-                  ) : (
-                    <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-[#09111d] p-8 text-center text-[var(--muted)]">
-                      No logs found for {logDate}.
+                        )}
                     </div>
-                  )}
+                  </div>
+                )}
+
+                <div className="overflow-hidden rounded-[1.5rem] border border-white/10 mt-4">
+                  <div className="max-h-[760px] overflow-auto">
+                    <table className="min-w-full bg-[#09111d] text-left text-sm">
+                      <thead className="sticky top-0 bg-[#101827] text-[var(--sand)]">
+                        <tr>
+                          {[
+                            "Log ID",
+                            "Member ID",
+                            "Name",
+                            "Phone",
+                            "Check-in Time",
+                          ].map((column) => (
+                            <th
+                              key={column}
+                              className="px-4 py-4 font-medium whitespace-nowrap"
+                            >
+                              {column}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredLogs.length ? (
+                          filteredLogs.map((log) => {
+                            const member = profileMembers.find(
+                              (m) => m.id === String(log.member_id),
+                            );
+                            return (
+                              <tr
+                                key={log.id}
+                                className="border-t border-white/8 text-[var(--muted)]"
+                              >
+                                <td className="px-4 py-4 whitespace-nowrap text-white">
+                                  {log.id}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-white">
+                                  {log.member_id}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  {member?.name || "Unknown"}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  {member?.phone || "Unknown"}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap">
+                                  {new Date(log.check_in_time).toLocaleString()}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={5}
+                              className="p-8 text-center text-[var(--muted)]"
+                            >
+                              No logs found for {logDate}.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </section>
             ) : null}
 
-            {activePane === 'analytics' ? (
+            {activePane === "analytics" ? (
               <section className="space-y-6">
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
@@ -1182,22 +1513,49 @@ export function DashboardPage() {
                   <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm text-[var(--muted)]">Monthly revenue trend</p>
-                        <p className="mt-2 font-display text-3xl text-white">$18.4k current</p>
+                        <p className="text-sm text-[var(--muted)]">
+                          Monthly revenue trend
+                        </p>
+                        <p className="mt-2 font-display text-3xl text-white">
+                          $18.4k current
+                        </p>
                       </div>
                       <span className="rounded-full bg-emerald-400/14 px-3 py-1 text-xs text-emerald-200">
                         +9.2%
                       </span>
                     </div>
                     <div className="mt-8 flex h-56 items-end gap-3">
-                      {['36%', '42%', '48%', '55%', '62%', '73%', '88%', '81%'].map((height, index) => (
-                        <div key={index} className="flex flex-1 flex-col items-center gap-3">
+                      {[
+                        "36%",
+                        "42%",
+                        "48%",
+                        "55%",
+                        "62%",
+                        "73%",
+                        "88%",
+                        "81%",
+                      ].map((height, index) => (
+                        <div
+                          key={index}
+                          className="flex flex-1 flex-col items-center gap-3"
+                        >
                           <div
                             className="w-full rounded-t-[1rem] bg-[linear-gradient(180deg,rgba(255,212,102,0.95),rgba(55,114,255,0.5))]"
                             style={{ height }}
                           />
                           <span className="text-xs text-[var(--muted)]">
-                            {['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'][index]}
+                            {
+                              [
+                                "Sep",
+                                "Oct",
+                                "Nov",
+                                "Dec",
+                                "Jan",
+                                "Feb",
+                                "Mar",
+                                "Apr",
+                              ][index]
+                            }
                           </span>
                         </div>
                       ))}
@@ -1206,17 +1564,21 @@ export function DashboardPage() {
 
                   <div className="grid gap-5">
                     <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-                      <p className="text-sm text-[var(--muted)]">Membership mix</p>
+                      <p className="text-sm text-[var(--muted)]">
+                        Membership mix
+                      </p>
                       <div className="mt-5 space-y-4">
                         {[
-                          ['Monthly', '54%'],
-                          ['Session Packs', '28%'],
-                          ['Quarterly / Annual', '18%'],
+                          ["Monthly", "54%"],
+                          ["Session Packs", "28%"],
+                          ["Quarterly / Annual", "18%"],
                         ].map(([label, value]) => (
                           <div key={label}>
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-white">{label}</span>
-                              <span className="text-[var(--muted)]">{value}</span>
+                              <span className="text-[var(--muted)]">
+                                {value}
+                              </span>
                             </div>
                             <div className="mt-2 rounded-full bg-white/8 p-1">
                               <div
@@ -1230,13 +1592,190 @@ export function DashboardPage() {
                     </article>
 
                     <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-                      <p className="text-sm text-[var(--muted)]">Operational notes</p>
+                      <p className="text-sm text-[var(--muted)]">
+                        Operational notes
+                      </p>
                       <div className="mt-4 space-y-3 text-sm leading-7 text-[var(--muted)]">
-                        <p>Peak occupancy is holding between 6 PM and 8 PM on weekdays.</p>
-                        <p>Boxing packages are converting better than standard session packs.</p>
-                        <p>Expired memberships need follow-up before the next billing cycle.</p>
+                        <p>
+                          Peak occupancy is holding between 6 PM and 8 PM on
+                          weekdays.
+                        </p>
+                        <p>
+                          Boxing packages are converting better than standard
+                          session packs.
+                        </p>
+                        <p>
+                          Expired memberships need follow-up before the next
+                          billing cycle.
+                        </p>
                       </div>
                     </article>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {activePane === "bank" ? (
+              <section className="space-y-6">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
+                    Bank pane
+                  </p>
+                  <h2 className="mt-3 font-display text-3xl text-white">
+                    Financial overview and funds.
+                  </h2>
+                </div>
+
+                <div className="mx-auto w-full max-w-4xl space-y-4">
+                  <div className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-8 text-center">
+                    <p className="text-sm uppercase tracking-[0.22em] text-[var(--muted)]">
+                      Total Balance
+                    </p>
+                    <p className="mt-6 font-display text-6xl text-emerald-400">
+                      ${bankMoney !== null ? bankMoney.toLocaleString() : "---"}
+                    </p>
+                    <p className="mt-4 text-sm text-[var(--sand)]">
+                      Available funds
+                    </p>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {activePane === "offers" ? (
+              <section className="space-y-6">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
+                    Offers pane
+                  </p>
+                  <h2 className="mt-3 font-display text-3xl text-white">
+                    Create and manage gym offers.
+                  </h2>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5 space-y-4 h-fit">
+                    <h3 className="font-display text-xl text-white">
+                      Create New Offer
+                    </h3>
+                    <div className="space-y-3">
+                      <input
+                        value={offerForm.name}
+                        onChange={(e) =>
+                          setOfferForm({ ...offerForm, name: e.target.value })
+                        }
+                        placeholder="Offer Name"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <input
+                        type="number"
+                        value={offerForm.price}
+                        onChange={(e) =>
+                          setOfferForm({ ...offerForm, price: e.target.value })
+                        }
+                        placeholder="Price"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <input
+                        type="date"
+                        value={offerForm.endDate}
+                        onChange={(e) =>
+                          setOfferForm({
+                            ...offerForm,
+                            endDate: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateOffer}
+                        disabled={isCreatingOffer}
+                        className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                      >
+                        {isCreatingOffer ? "Creating..." : "Create Offer"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5">
+                      <h3 className="mb-4 font-display text-xl text-white">
+                        Available Offers
+                      </h3>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {availableOffers.length > 0 ? (
+                          availableOffers.map((offer) => (
+                            <div
+                              key={offer.id}
+                              className="rounded-2xl border border-white/5 bg-white/5 p-4"
+                            >
+                              <p className="text-lg font-medium text-white">
+                                {offer.name}
+                              </p>
+                              <p className="text-2xl font-display text-[var(--accent)] mt-1">
+                                ${offer.price}
+                              </p>
+                              <p className="text-xs text-[var(--muted)] mt-2 uppercase tracking-wider">
+                                Ends:{" "}
+                                {new Date(
+                                  offer.offer_end_date,
+                                ).toLocaleDateString()}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[var(--muted)]">
+                            No available offers found.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5">
+                      <h3 className="mb-4 font-display text-xl text-white">
+                        All Offers History
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="text-[var(--sand)] border-b border-white/10">
+                            <tr>
+                              <th className="px-4 py-3 font-medium">Name</th>
+                              <th className="px-4 py-3 font-medium">Price</th>
+                              <th className="px-4 py-3 font-medium">
+                                End Date
+                              </th>
+                              <th className="px-4 py-3 font-medium">
+                                Created At
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allOffers.map((offer) => (
+                              <tr
+                                key={offer.id}
+                                className="border-b border-white/5 text-[var(--muted)]"
+                              >
+                                <td className="px-4 py-3 text-white">
+                                  {offer.name}
+                                </td>
+                                <td className="px-4 py-3">${offer.price}</td>
+                                <td className="px-4 py-3">
+                                  {new Date(
+                                    offer.offer_end_date,
+                                  ).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {new Date(
+                                    offer.created_at,
+                                  ).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -1245,5 +1784,5 @@ export function DashboardPage() {
         </section>
       </div>
     </div>
-  )
+  );
 }
