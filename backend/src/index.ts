@@ -9,6 +9,7 @@ import { swaggerSpec } from "./config/swagger";
 import memberRouter from "./routes/member.routes";
 import authRouter from "./routes/auth.routes";
 
+
 import logsRouter from "./routes/logs.routes";
 import companyRouter from "./routes/company.routes";
 import { connectRedis } from "./config/redis";
@@ -18,6 +19,7 @@ import { authMiddleware } from "./middlewares/auth.middleware";
 import cookieParser from "cookie-parser";
 import bankRouter from "./routes/bank.routes";
 import offerRouter from "./routes/offer.routes";
+import reportRouter from "./routes/report.routes";
 
 //import { connectRedis } from './config/redis';
 
@@ -65,6 +67,14 @@ app.get("/", (_: Request, res: Response) => {
 });
 
 // routes
+app.use("/api/v1/:gym_id", memberRouter);
+app.use("/api/v1/companies", companyRouter);
+app.use("/api/v1/:gym_id/reports", reportRouter);
+
+//NOTE: this route is the correct one
+// so the endpoint would be like /api/v1/4(gym_id)/logs/5(member_id)
+//app.use("/api/v1/:gym_id/logs", logsRouter)
+app.use("/api/v1/:gym_id/logs", logsRouter); // NOTE: not that one
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/:gym_id", authMiddleware, memberRouter);
 app.use("/api/v1/companies", authMiddleware, companyRouter);

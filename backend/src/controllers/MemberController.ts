@@ -234,7 +234,7 @@ export const addSession = async (req: Request, res: Response) => {
 
     const session: Session = {
       session_date: session_date,
-      session_type: session_type,
+      session_type: session_type.toLowerCase(),
       price: price,
       member_name: member_name,
     };

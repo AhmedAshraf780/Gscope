@@ -373,6 +373,101 @@ export class SqlDataStore implements Datastore {
     }
   }
 
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  // REPORTS
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  async getTodayMembers(gym_id: number, date: string): Promise<number | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND start_date = ?`,
+        [gym_id, date]
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async getMonthlyMembers(gym_id: number, month: string): Promise<number | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND strftime('%Y-%m', start_date) = ?`,
+        [gym_id, month]
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+  async getMonthlyRevenue(gym_id: number, month: string): Promise<number | null> {
+    try {
+      const memberrow = await this.db.get(`SELECT SUM(price) as total FROM members WHERE gym_id =? AND strftime('%Y-%m', start_date) = ?`,
+        [gym_id, month]
+      );
+      const sessionrow = await this.db.get(`SELECT SUM(price) as total FROM sessions WHERE gym_id =? AND strftime('%Y-%m', session_date) = ?`,
+        [gym_id, month]
+      );
+
+      const memberTotal = memberrow?.total || 0;
+      const sessionTotal = sessionrow?.total || 0;
+
+      return memberTotal + sessionTotal;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+  async getActiveMembers(gym_id: number): Promise<number | null> {
+    try {
+      const row = await this.db.get(`SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND end_date >= DATE('now')`,
+        [gym_id]
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+  async getTodaySessions(gym_id: number, date: string): Promise<number | null> {
+    try {
+      const row = await this.db.get(`SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_date = ?`,
+        [gym_id, date]
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+  async getMonthlySessions(gym_id: number, month: string): Promise<number | null> {
+    try {
+      const row = await this.db.get(`SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND strftime('%Y-%m', session_date) = ?`,
+        [gym_id, month]
+      );
+      return row?.total || 0;
+
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async getMonthlySessionsByType(gym_id: number, type: string, month: string): Promise<number | null> {
+    try {
+      const row = await this.db.get(`SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_type = ? AND strftime('%Y-%m', session_date) = ?`,
+        [gym_id, type, month]
+      );
+      return row?.total || 0;
+
+    }
+    catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
   async getBankMoney(gym_id: number): Promise<number> {
     try {
       const row = await this.db.get(`SELECT money FROM bank WHERE gym_id = ?`, [
@@ -385,11 +480,12 @@ export class SqlDataStore implements Datastore {
     }
   }
 
+
   async addBank(gym_id: number, money: number): Promise<number | null> {
     try {
       await this.db.run(
         `INSERT INTO bank (gym_id, money)
-            VALUES (?, ?)`,
+              VALUES (?, ?)`,
         [gym_id, money],
       );
       return 1;
@@ -409,8 +505,8 @@ export class SqlDataStore implements Datastore {
       money = money + row.money;
       await this.db.run(
         `UPDATE bank
-            SET money = ?
-            WHERE gym_id = ?`,
+              SET money = ?
+              WHERE gym_id = ?`,
         [money, gym_id],
       );
       return money;
@@ -454,8 +550,8 @@ export class SqlDataStore implements Datastore {
     try {
       const rows = await this.db.all(
         `SELECT * FROM offers
-         WHERE gym_id = ?
-         AND offer_end_date >= date('now')`,
+          WHERE gym_id = ?
+          AND offer_end_date >= date('now')`,
         [gym_id],
       );
 
@@ -465,4 +561,8 @@ export class SqlDataStore implements Datastore {
       return null;
     }
   }
+
 }
+
+
+
