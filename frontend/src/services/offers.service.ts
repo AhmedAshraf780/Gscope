@@ -1,9 +1,9 @@
 const server = "http://localhost:6969";
 
 export const offersService = {
-  getOffers: async (gym_id: number) => {
+  getOffers: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/offers`, {
+      const res = await fetch(`${server}/api/v1/offers`, {
         method: "GET",
         credentials: "include",
         headers: {
@@ -18,19 +18,19 @@ export const offersService = {
     }
   },
   createOffer: async (
-    gym_id: number,
     name: string,
+    months: number,
     price: number,
     end_date: string,
   ) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/offers`, {
+      const res = await fetch(`${server}/api/v1/offers`, {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, price, end_date }),
+        body: JSON.stringify({ name, price, months, end_date }),
       });
 
       const data = await res.json();
@@ -40,9 +40,9 @@ export const offersService = {
     }
   },
 
-  getAvailableOffers: async (gym_id: number) => {
+  getAvailableOffers: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/offers/available`, {
+      const res = await fetch(`${server}/api/v1/offers/available`, {
         method: "GET",
         credentials: "include",
         headers: {

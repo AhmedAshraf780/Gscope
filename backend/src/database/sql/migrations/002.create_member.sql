@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS offers (
     offer_end_date TEXT NOT NULL,
     name TEXT NOT NULL,
     price INTEGER NOT NULL,
+    months INTEGER NOT NULL,
     member_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (date('now')),
     FOREIGN KEY (gym_id) REFERENCES companies(id) ON DELETE CASCADE
 );

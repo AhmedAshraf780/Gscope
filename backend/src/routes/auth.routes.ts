@@ -89,11 +89,11 @@ authRouter.post(
       }
 
       // create jsonwebtoken
-      const token = jwt.sign({ email }, config.jwt_secret, { expiresIn: "1h" });
+      const token = jwt.sign({ gym_id: gym.id }, config.jwt_secret, {
+        expiresIn: "1h",
+      });
 
-      console.log(token);
-
-      res.cookie("token", token, {
+      res.cookie(config.auth_token, token, {
         secure: false, // TODO: CHANGE TO TRUE in PROD
         httpOnly: true,
         sameSite: "lax",

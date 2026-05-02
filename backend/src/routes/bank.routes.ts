@@ -3,8 +3,11 @@ import { db } from "../database";
 
 const bankRouter = Router({ mergeParams: true });
 bankRouter.get("/", async (req: Request, res: Response) => {
-  const gym_id = Number(req.params.gym_id);
+  const gym_id = req.gym_id;
   try {
+    if (!gym_id) {
+      return res.status(400).json({ message: "Gym ID is required" });
+    }
 
     // check if gym exists
     const gym = await db.getCompanyById(gym_id);
@@ -19,6 +22,6 @@ bankRouter.get("/", async (req: Request, res: Response) => {
     console.log(e);
     res.status(500).json({ message: "Internal server error" });
   }
-})
+});
 
 export default bankRouter;

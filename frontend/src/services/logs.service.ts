@@ -1,9 +1,9 @@
-const server = 'http://localhost:6969';
+const server = "http://localhost:6969";
 export const logService = {
-  getLogs: async (gym_id: number) => {
+  getLogs: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/logs`, {
-        credentials: 'include',
+      const res = await fetch(`${server}/api/v1/logs`, {
+        credentials: "include",
       });
       const data = await res.json();
       return data;
@@ -12,11 +12,11 @@ export const logService = {
     }
   },
 
-  createLog: async (gym_id: number, member_id: number) => {
+  createLog: async (member_id: number) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/logs/${member_id}`, {
-        method: 'POST',
-        credentials: 'include',
+      const res = await fetch(`${server}/api/v1/logs/${member_id}`, {
+        method: "POST",
+        credentials: "include",
       });
       const data = await res.json();
       return data;
@@ -25,10 +25,10 @@ export const logService = {
     }
   },
 
-  getLogsByMemberId: async (gym_id: number, member_id: number) => {
+  getLogsByMemberId: async (member_id: number) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/logs/${member_id}`, {
-        credentials: 'include',
+      const res = await fetch(`${server}/api/v1/logs/${member_id}`, {
+        credentials: "include",
       });
       const data = await res.json();
       return data;
@@ -37,13 +37,13 @@ export const logService = {
     }
   },
 
-  getLastCheckIn: async (gym_id: number, member_id: number) => {
+  getLastCheckIn: async (member_id: number) => {
     try {
       const res = await fetch(
-        `${server}/api/v1/${gym_id}/logs/get-last-attendance/${member_id}`,
+        `${server}/api/v1/logs/get-last-attendance/${member_id}`,
         {
-          credentials: 'include',
-        }
+          credentials: "include",
+        },
       );
       const data = await res.json();
       return data;

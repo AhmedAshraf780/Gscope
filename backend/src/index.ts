@@ -9,7 +9,6 @@ import { swaggerSpec } from "./config/swagger";
 import memberRouter from "./routes/member.routes";
 import authRouter from "./routes/auth.routes";
 
-
 import logsRouter from "./routes/logs.routes";
 import companyRouter from "./routes/company.routes";
 import { connectRedis } from "./config/redis";
@@ -21,8 +20,13 @@ import bankRouter from "./routes/bank.routes";
 import offerRouter from "./routes/offer.routes";
 import reportRouter from "./routes/report.routes";
 
-//import { connectRedis } from './config/redis';
-
+declare global {
+  namespace Express {
+    interface Request {
+      gym_id?: number;
+    }
+  }
+}
 export const clients: Response[] = [];
 const app = express();
 
@@ -66,21 +70,13 @@ app.get("/", (_: Request, res: Response) => {
   res.json({ message: "Hello World!" });
 });
 
-// routes
-app.use("/api/v1/:gym_id", memberRouter);
-app.use("/api/v1/companies", companyRouter);
-app.use("/api/v1/:gym_id/reports", reportRouter);
-
-//NOTE: this route is the correct one
-// so the endpoint would be like /api/v1/4(gym_id)/logs/5(member_id)
-//app.use("/api/v1/:gym_id/logs", logsRouter)
-app.use("/api/v1/:gym_id/logs", logsRouter); // NOTE: not that one
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/:gym_id", authMiddleware, memberRouter);
+app.use("/api/v1/members", authMiddleware, memberRouter);
 app.use("/api/v1/companies", authMiddleware, companyRouter);
-app.use("/api/v1/:gym_id/logs", authMiddleware, logsRouter);
-app.use("/api/v1/:gym_id/bank", authMiddleware, bankRouter);
-app.use("/api/v1/:gym_id/offers", authMiddleware, offerRouter);
+app.use("/api/v1/logs", authMiddleware, logsRouter);
+app.use("/api/v1/bank", authMiddleware, bankRouter);
+app.use("/api/v1/offers", authMiddleware, offerRouter);
+app.use("/api/v1/reports", authMiddleware, reportRouter);
 
 // start server
 app.listen(config.port, async () => {
