@@ -1,12 +1,13 @@
-import path from 'path';
-import { Database, open as sqliteOpen } from 'sqlite';
-import sqlite3 from 'sqlite3';
+import path from "path";
+import { Database, open as sqliteOpen } from "sqlite";
+import sqlite3 from "sqlite3";
 
-import { Datastore } from '..';
-import { Company } from '../DAOs/companyDao';
-import { Member, Session } from '../DAOs/memberDao';
-import { attendance_logs } from '../DAOs/logsDao';
-import { LastAttendance } from '../DAOs/logsDao';
+import { Datastore } from "..";
+import { Company } from "../DAOs/companyDao";
+import { Member, Session } from "../DAOs/memberDao";
+import { attendance_logs } from "../DAOs/logsDao";
+import { LastAttendance } from "../DAOs/logsDao";
+import { Offer } from "../DAOs/offerDao";
 
 export class SqlDataStore implements Datastore {
   private db!: Database<sqlite3.Database, sqlite3.Statement>;
@@ -19,15 +20,15 @@ export class SqlDataStore implements Datastore {
         driver: sqlite3.Database,
         mode: sqlite3.OPEN_READWRITE,
       });
-      console.log('Database opened');
+      console.log("Database opened");
     } catch (e) {
       console.log(e);
       process.exit(1);
     }
 
-    this.db.run('PRAGMA foreign_keys = ON;');
+    this.db.run("PRAGMA foreign_keys = ON;");
     await this.db.migrate({
-      migrationsPath: path.join(__dirname, 'migrations'),
+      migrationsPath: path.join(__dirname, "migrations"),
     });
     return this;
   }
@@ -40,13 +41,19 @@ export class SqlDataStore implements Datastore {
    *=======================================================================
    */
 
-
   async createCompany(company: Company): Promise<number | undefined> {
     try {
       const result = await this.db.run(
         `INSERT INTO companies (name, email, phone,password ,created_at, updated_at)
             VALUES (?, ?, ?,?, ?, ?)`,
-        [company.name, company.email, company.phone, company.password, company.created_at, company.updated_at]
+        [
+          company.name,
+          company.email,
+          company.phone,
+          company.password,
+          company.created_at,
+          company.updated_at,
+        ],
       );
       return result.lastID;
     } catch (error) {
@@ -57,10 +64,9 @@ export class SqlDataStore implements Datastore {
 
   async getCompanyById(id: number): Promise<Company | null> {
     try {
-      const row = await this.db.get(
-        `SELECT * FROM companies WHERE id = ?`,
-        [id]
-      );
+      const row = await this.db.get(`SELECT * FROM companies WHERE id = ?`, [
+        id,
+      ]);
       return row || null;
     } catch (error) {
       console.log(error);
@@ -69,11 +75,9 @@ export class SqlDataStore implements Datastore {
   }
   async getCompanyByEmail(email: string): Promise<Company | null> {
     try {
-
-      const row = await this.db.get(
-        `SELECT * FROM companies WHERE email = ?`,
-        [email]
-      );
+      const row = await this.db.get(`SELECT * FROM companies WHERE email = ?`, [
+        email,
+      ]);
       return row || null;
     } catch (error) {
       console.log(error);
@@ -93,10 +97,10 @@ export class SqlDataStore implements Datastore {
   async updateCompany(id: number, company: Company): Promise<void> {
     try {
       await this.db.run(
-        `UPDATE companies 
+        `UPDATE companies
             SET name = ?, email = ?, phone = ?, updated_at = ?
             WHERE id = ?`,
-        [company.name, company.email, company.phone, company.updated_at, id]
+        [company.name, company.email, company.phone, company.updated_at, id],
       );
     } catch (error) {
       console.log(error);
@@ -111,13 +115,16 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-  async updateCompanyPassword(email: string, password: string): Promise<boolean> {
+  async updateCompanyPassword(
+    email: string,
+    password: string,
+  ): Promise<boolean> {
     try {
       await this.db.run(
-        `UPDATE companies 
+        `UPDATE companies
             SET password = ?
             WHERE email = ?`,
-        [password, email]
+        [password, email],
       );
       return true;
     } catch (error) {
@@ -133,8 +140,6 @@ export class SqlDataStore implements Datastore {
    *
    *=======================================================================
    */
-
-
 
   /*==========================================================================
    *
@@ -154,9 +159,7 @@ export class SqlDataStore implements Datastore {
   }
   async addMember(member: Member, gym_id: number): Promise<number | undefined> {
     try {
-
       const now = new Date();
-
 
       const formatDate = (date: Date) =>
         `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
@@ -170,7 +173,16 @@ export class SqlDataStore implements Datastore {
       const result = await this.db.run(
         `INSERT INTO members (gym_id,name, phone, months, price, start_date, end_date, notes)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [gym_id, member.name, member.phone, member.months, member.price, member.start_date, member.end_date, member.notes]
+        [
+          gym_id,
+          member.name,
+          member.phone,
+          member.months,
+          member.price,
+          member.start_date,
+          member.end_date,
+          member.notes,
+        ],
       );
       return result.lastID;
     } catch (e) {
@@ -182,8 +194,8 @@ export class SqlDataStore implements Datastore {
   async getMemberByName(name: string): Promise<Member | null> {
     try {
       const row = await this.db.get(
-        `SELECT * FROM members WHERE LOWER(name) = LOWER(?)`,// TODO: filter names 
-        [name.trim()]
+        `SELECT * FROM members WHERE LOWER(name) = LOWER(?)`, // TODO: filter names
+        [name.trim()],
       );
       return row || null;
     } catch (e) {
@@ -193,10 +205,7 @@ export class SqlDataStore implements Datastore {
   }
   async getMemberById(id: number): Promise<Member | null> {
     try {
-      const row = await this.db.get(
-        `SELECT * FROM members WHERE id = ?`,
-        [id]
-      );
+      const row = await this.db.get(`SELECT * FROM members WHERE id = ?`, [id]);
       return row || null;
     } catch (e) {
       console.log(e);
@@ -204,10 +213,13 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-  async updateMember(id: number, months: number, price: number): Promise<boolean> {
+  async updateMember(
+    id: number,
+    months: number,
+    price: number,
+  ): Promise<boolean> {
     try {
       const now = new Date();
-
 
       const formatDate = (date: Date) =>
         `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
@@ -219,10 +231,10 @@ export class SqlDataStore implements Datastore {
       const end_date = formatDate(endDate);
 
       await this.db.run(
-        `UPDATE members 
+        `UPDATE members
        SET months = ?, price = ?, start_date = ?, end_date = ?
        WHERE id = ?`,
-        [months, price, start_date, end_date, id]
+        [months, price, start_date, end_date, id],
       );
 
       return true;
@@ -234,7 +246,9 @@ export class SqlDataStore implements Datastore {
 
   async listMembersOfGym(gym_id: number): Promise<Member[]> {
     try {
-      return await this.db.all(`SELECT * FROM members WHERE gym_id = ?`, [gym_id]);
+      return await this.db.all(`SELECT * FROM members WHERE gym_id = ?`, [
+        gym_id,
+      ]);
     } catch (e) {
       console.log(e);
       return [];
@@ -245,7 +259,13 @@ export class SqlDataStore implements Datastore {
     try {
       await this.db.run(
         `INSERT INTO sessions (gym_id,session_date, session_type, price, member_name) VALUES (?, ?, ?, ?, ?)`,
-        [gym_id, session.session_date, session.session_type, session.price, session.member_name]
+        [
+          gym_id,
+          session.session_date,
+          session.session_type,
+          session.price,
+          session.member_name,
+        ],
       );
       return true;
     } catch (e) {
@@ -256,7 +276,10 @@ export class SqlDataStore implements Datastore {
 
   async listSessions(type: string, gym_id: number): Promise<Session[]> {
     try {
-      return await this.db.all(`SELECT * FROM sessions WHERE session_type = ? AND gym_id = ?`, [type, gym_id]);
+      return await this.db.all(
+        `SELECT * FROM sessions WHERE session_type = ? AND gym_id = ?`,
+        [type, gym_id],
+      );
     } catch (e) {
       console.log(e);
       return [];
@@ -267,13 +290,15 @@ export class SqlDataStore implements Datastore {
   // LOGS
   /////////////////////////////////////////////////////////////////////////////
 
-
-  async createLog(member_id: number, gym_id: number): Promise<number | undefined> {
+  async createLog(
+    member_id: number,
+    gym_id: number,
+  ): Promise<number | undefined> {
     try {
       const result = await this.db.run(
         `INSERT INTO attendance_logs (member_id, check_in_time, gym_id)
             VALUES (?, ?, ?)`,
-        [member_id, new Date().toISOString(), gym_id]
+        [member_id, new Date().toISOString(), gym_id],
       );
       return result.lastID;
     } catch (error) {
@@ -284,7 +309,10 @@ export class SqlDataStore implements Datastore {
 
   async getLogsByMemberId(member_id: number): Promise<attendance_logs[]> {
     try {
-      return await this.db.all(`SELECT * FROM attendance_logs WHERE member_id = ?`, [member_id]);
+      return await this.db.all(
+        `SELECT * FROM attendance_logs WHERE member_id = ?`,
+        [member_id],
+      );
     } catch (error) {
       console.log(error);
       return [];
@@ -295,7 +323,7 @@ export class SqlDataStore implements Datastore {
     try {
       const row = await this.db.get(
         `SELECT * FROM attendance_logs WHERE member_id = ? ORDER BY check_in_time DESC LIMIT 1`,
-        [member_id]
+        [member_id],
       );
       return row || null;
     } catch (error) {
@@ -304,19 +332,20 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
-  async getLastAttendanceWithDuration(memberId: number): Promise<LastAttendance> {
+  async getLastAttendanceWithDuration(
+    memberId: number,
+  ): Promise<LastAttendance> {
     const row = await this.db.get(
       `SELECT MAX(check_in_time) as last_attendance
      FROM attendance_logs
      WHERE member_id = ?`,
-      [memberId]
+      [memberId],
     );
 
     if (!row || !row.last_attendance) {
       return {
         last_attendance: null,
-        duration_in_days: null
+        duration_in_days: null,
       };
     }
 
@@ -328,18 +357,112 @@ export class SqlDataStore implements Datastore {
 
     return {
       last_attendance: row.last_attendance,
-      duration_in_days: diffDays
+      duration_in_days: diffDays,
     };
   }
 
-
   async getAllLogsByGym(gym_id: number): Promise<attendance_logs[]> {
     try {
-      return await this.db.all(`SELECT * FROM attendance_logs WHERE gym_id = ?`, [gym_id]);
+      return await this.db.all(
+        `SELECT * FROM attendance_logs WHERE gym_id = ?`,
+        [gym_id],
+      );
     } catch (error) {
       console.log(error);
       return [];
     }
   }
-}
 
+  async getBankMoney(gym_id: number): Promise<number> {
+    try {
+      const row = await this.db.get(`SELECT money FROM bank WHERE gym_id = ?`, [
+        gym_id,
+      ]);
+      return row.money || 0;
+    } catch (error) {
+      console.log(error);
+      return 0;
+    }
+  }
+
+  async addBank(gym_id: number, money: number): Promise<number | null> {
+    try {
+      await this.db.run(
+        `INSERT INTO bank (gym_id, money)
+            VALUES (?, ?)`,
+        [gym_id, money],
+      );
+      return 1;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async updateBank(gym_id: number, money: number): Promise<number | null> {
+    try {
+      // get the money from the bank
+      const row = await this.db.get(`SELECT money FROM bank WHERE gym_id = ?`, [
+        gym_id,
+      ]);
+
+      money = money + row.money;
+      await this.db.run(
+        `UPDATE bank
+            SET money = ?
+            WHERE gym_id = ?`,
+        [money, gym_id],
+      );
+      return money;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async addOffer(
+    gym_id: number,
+    name: string,
+    price: number,
+    end_date: string,
+  ): Promise<number | null> {
+    try {
+      const row = await this.db.run(
+        `INSERT INTO offers(gym_id,name,offer_end_date,price,member_count) VALUES(?,?,?,?,?)`,
+        [gym_id, name, end_date, price, 0],
+      );
+      return row.lastID || null;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+
+  async getOffers(gym_id: number): Promise<Offer[] | null> {
+    try {
+      const rows = await this.db.all(`SELECT * FROM offers WHERE gym_id = ?`, [
+        gym_id,
+      ]);
+      return rows || null;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+
+  async getAvailableOffers(gym_id: number): Promise<Offer[] | null> {
+    try {
+      const rows = await this.db.all(
+        `SELECT * FROM offers
+         WHERE gym_id = ?
+         AND offer_end_date >= date('now')`,
+        [gym_id],
+      );
+
+      return rows.length ? rows : null;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+}
