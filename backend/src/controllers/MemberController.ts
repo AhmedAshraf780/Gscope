@@ -111,7 +111,8 @@ export const deleteMember = async (req: Request, res: Response) => {
 export const updateMember = async (req: Request, res: Response) => {
   try {
     const { months, price } = req.body;
-    const { gym_id, id } = req.params;
+    const { id } = req.params;
+    const gym_id = req.gym_id;
     if (!id || !months || !price) {
       return res
         .status(400)

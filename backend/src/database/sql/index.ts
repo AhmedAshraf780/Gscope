@@ -376,57 +376,270 @@ export class SqlDataStore implements Datastore {
   ////////////////////////////////////////////////////////////////////////////////////////////
   // REPORTS
   ////////////////////////////////////////////////////////////////////////////////////////////
-  async getTodayMembers(gym_id: number, date: string): Promise<number | null> {
+  async getMembersbyday(gym_id: number, date: string): Promise<{ total: number, members: Member[] } | null> {
     try {
       const row = await this.db.get(
-        `SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND start_date = ?`,
+        `SELECT * FROM members WHERE gym_id = ? AND start_date = ?`,
         [gym_id, date],
       );
-      return row?.total || 0;
+      return {
+        total: row.length,
+        members: row
+      };
     } catch (error) {
       console.log(error);
       return null;
     }
   }
 
-  async getMonthlyMembers(
+  async getMembersbymonth(
     gym_id: number,
     month: string,
-  ): Promise<number | null> {
+  ): Promise<{ total: number, members: Member[] } | null> {
     try {
       const row = await this.db.get(
-        `SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND strftime('%Y-%m', start_date) = ?`,
+        `SELECT * FROM members WHERE gym_id = ? AND strftime('%Y-%m', start_date) = ?`,
         [gym_id, month],
       );
-      return row?.total || 0;
+      return {
+        total: row.length,
+        members: row
+      };
     } catch (error) {
       console.log(error);
       return null;
     }
   }
-  async getMonthlyRevenue(
+  async getRevenuebymonth(
     gym_id: number,
     month: string,
-  ): Promise<number | null> {
+  ): Promise<{
+    totalRevenue: number;
+    membersRevenue: number;
+    sessionsRevenue: number;
+    membersCount: number;
+    sessionsCount: number;
+    members: Member[];
+    sessions: Session[];
+  } | null> {
     try {
       const memberrow = await this.db.get(
-        `SELECT SUM(price) as total FROM members WHERE gym_id =? AND strftime('%Y-%m', start_date) = ?`,
+        `SELECT * FROM members WHERE gym_id =? AND strftime('%Y-%m', start_date) = ?`,
         [gym_id, month],
       );
       const sessionrow = await this.db.get(
-        `SELECT SUM(price) as total FROM sessions WHERE gym_id =? AND strftime('%Y-%m', session_date) = ?`,
+        `SELECT * FROM sessions WHERE gym_id =? AND strftime('%Y-%m', session_date) = ?`,
         [gym_id, month],
       );
 
-      const memberTotal = memberrow?.total || 0;
-      const sessionTotal = sessionrow?.total || 0;
+      const memberTotal = memberrow.reduce((sum: number, m: any) => sum + (m.price || 0), 0);
+      const sessionTotal = sessionrow.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
 
-      return memberTotal + sessionTotal;
+      return {
+        totalRevenue: memberTotal + sessionTotal,
+        membersRevenue: memberTotal,
+        sessionsRevenue: sessionTotal,
+        membersCount: memberrow.length,
+        sessionsCount: sessionrow.length,
+        members: memberrow,
+        sessions: sessionrow
+      };
     } catch (error) {
       console.log(error);
       return null;
     }
   }
+
+  async getRevenuebyday(gym_id: number, date: string): Promise<{
+    totalRevenue: number;
+    membersRevenue: number;
+    sessionsRevenue: number;
+    membersCount: number;
+    sessionsCount: number;
+    members: Member[];
+    sessions: Session[];
+  } | null> {
+    try {
+      const memberrow = await this.db.get(
+        `SELECT * FROM members WHERE gym_id =? AND start_date = ?`,
+        [gym_id, date],
+      );
+      const sessionrow = await this.db.get(
+        `SELECT * FROM sessions WHERE gym_id =? AND session_date = ?`,
+        [gym_id, date],
+      );
+
+      const memberTotal = memberrow.reduce((sum: number, m: any) => sum + (m.price || 0), 0);
+      const sessionTotal = sessionrow.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+
+      return {
+        totalRevenue: memberTotal + sessionTotal,
+        membersRevenue: memberTotal,
+        sessionsRevenue: sessionTotal,
+        membersCount: memberrow.length,
+        sessionsCount: sessionrow.length,
+        members: memberrow,
+        sessions: sessionrow
+      };
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+  async getSessionsbyday(gym_id: number, date: string): Promise<{ total: number, sessions: Session[] } | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT * FROM sessions WHERE gym_id = ? AND session_date = ?`,
+        [gym_id, date],
+      );
+      return {
+        total: row.length,
+        sessions: row
+      };
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async getSessionsdayByType(gym_id: number, type: string, date: string)
+    : Promise<{ total: number, sessions: Session[] } | null> {
+
+    try {
+
+      const row = await this.db.get(
+        `SELECT * FROM sessions WHERE gym_id = ? AND session_type = ? AND session_date = ?`,
+        [gym_id, type, date],
+      );
+      return {
+        total: row.length,
+        sessions: row
+      };
+
+
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+
+  }
+
+  async getSessionsbymonth(
+    gym_id: number,
+    month: string,
+  ): Promise<{ total: number, sessions: Session[] } | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT * FROM sessions WHERE gym_id = ? AND strftime('%Y-%m', session_date) = ?`,
+        [gym_id, month],
+      );
+      return {
+        total: row.length,
+        sessions: row
+      };
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+
+  async getSessionsMonthByType(
+    gym_id: number,
+    type: string,
+    month: string,
+  ): Promise<{ total: number, sessions: Session[] } | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT * FROM sessions WHERE gym_id = ? AND session_type = ? AND strftime('%Y-%m', session_date) = ?`,
+        [gym_id, type, month],
+      );
+      return {
+        total: row.length,
+        sessions: row
+      };
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+  async getTodaySessions(gym_id: number): Promise<number | null> {
+    try {
+
+      const row = await this.db.get(`SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_date = DATE('now')`,
+        [gym_id]
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+  async getTodayRevenue(gym_id: number): Promise<number | null> {
+    try {
+
+      const memberrow = await this.db.get(
+        `SELECT SUM(price) as total FROM members WHERE gym_id =? AND start_date = DATE('now')`,
+        [gym_id],
+      );
+      const sessionrow = await this.db.get(
+        `SELECT SUM(price) as total FROM sessions WHERE gym_id =? AND session_date = DATE('now')`,
+        [gym_id],
+      );
+      const memberTotal = memberrow?.total || 0;
+      const sessionTotal = sessionrow?.total || 0;
+      return memberTotal + sessionTotal;
+
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+  async getmonthRevenue(gym_id: number): Promise<number | null> {
+    try {
+      const memberrow = await this.db.get(
+        `SELECT SUM(price) as total FROM members WHERE gym_id =? AND strftime('%Y-%m', start_date) = strftime('%Y-%m',DATE('now')) `,
+        [gym_id],
+      );
+      const sessionrow = await this.db.get(
+        `SELECT SUM(price) as total FROM sessions WHERE gym_id =? AND strftime('%Y-%m', session_date) = strftime('%Y-%m',DATE('now'))`,
+        [gym_id],
+      );
+      const memberTotal = memberrow?.total || 0;
+      const sessionTotal = sessionrow?.total || 0;
+      return memberTotal + sessionTotal;
+
+
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
+  async getTodaymembers(gym_id: number): Promise<number | null> {
+    try {
+
+      const row = await this.db.get(`SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND start_date = DATE('now')`,
+        [gym_id]
+      )
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+
   async getActiveMembers(gym_id: number): Promise<number | null> {
     try {
       const row = await this.db.get(
@@ -439,50 +652,19 @@ export class SqlDataStore implements Datastore {
       return null;
     }
   }
-  async getTodaySessions(gym_id: number, date: string): Promise<number | null> {
-    try {
-      const row = await this.db.get(
-        `SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_date = ?`,
-        [gym_id, date],
-      );
-      return row?.total || 0;
-    } catch (error) {
-      console.log(error);
-      return null;
-    }
-  }
-  async getMonthlySessions(
-    gym_id: number,
-    month: string,
-  ): Promise<number | null> {
-    try {
-      const row = await this.db.get(
-        `SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND strftime('%Y-%m', session_date) = ?`,
-        [gym_id, month],
-      );
-      return row?.total || 0;
-    } catch (error) {
-      console.log(error);
-      return null;
-    }
-  }
 
-  async getMonthlySessionsByType(
-    gym_id: number,
-    type: string,
-    month: string,
-  ): Promise<number | null> {
-    try {
-      const row = await this.db.get(
-        `SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_type = ? AND strftime('%Y-%m', session_date) = ?`,
-        [gym_id, type, month],
-      );
-      return row?.total || 0;
-    } catch (error) {
-      console.log(error);
-      return null;
-    }
-  }
+
+
+
+
+
+
+
+  ////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////BANK
+  ///////////////////////////////////////////////////////////////////////////////////////////
+
+
 
   async getBankMoney(gym_id: number): Promise<number> {
     try {
