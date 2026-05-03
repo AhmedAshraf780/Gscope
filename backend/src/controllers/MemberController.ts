@@ -4,8 +4,8 @@ import { Member, Session } from "../database/DAOs/memberDao";
 
 export const addMember = async (req: Request, res: Response) => {
   try {
-    const { name, phone, months, price, notes } = req.body;
-    const { gym_id } = req.params;
+    const { name, phone, months, price, notes, offer_id } = req.body;
+    const gym_id = req.gym_id;
 
     if (!name || !phone || !months || !price || !gym_id) {
       return res.status(400).json({ message: "All fields are required" });
@@ -22,29 +22,23 @@ export const addMember = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "Name must be between 2 and 15 characters" });
     }
-    if (
-      phone.length != 11 ||
-      phone[0] !== "0" ||
-      phone[1] !== "1" ||
-      !["0", "1", "2", "5"].includes(phone[2])
-    ) {
-      return res
-        .status(400)
-        .json({ message: "you must enter a valid phone number" });
-    }
-    for (let i = 0; i < phone.length; i++) {
-      if (phone[i] < "0" || phone[i] > "9") {
-        return res
-          .status(400)
-          .json({ message: "you must enter a valid phone number" });
-      }
-    }
-
-    // NOTE: as a backend we are the guards who protect the system from failing
-    // so it's not an option to handle all the cases
-
-    // WARNING: this code will lead to errors and the user will get 500 even the server is running
-    // you should handle all the cases and i am not talking about validation of the input
+    // if (
+    //   phone.length != 11 ||
+    //   phone[0] !== "0" ||
+    //   phone[1] !== "1" ||
+    //   !["0", "1", "2", "5"].includes(phone[2])
+    // ) {
+    //   return res
+    //     .status(400)
+    //     .json({ message: "you must enter a valid phone number" });
+    // }
+    // for (let i = 0; i < phone.length; i++) {
+    //   if (phone[i] < "0" || phone[i] > "9") {
+    //     return res
+    //       .status(400)
+    //       .json({ message: "you must enter a valid phone number" });
+    //   }
+    // }
 
     const member: Member = {
       name: name,
@@ -63,6 +57,14 @@ export const addMember = async (req: Request, res: Response) => {
 
     await db.addMember(member, Number(gym_id));
 
+    // check offer_id
+    if (offer_id) {
+      const ok = await db.updateOfferCount(Number(offer_id));
+      if (!ok) {
+        return res.status(500).json({ message: "Error updating offer count" });
+      }
+    }
+
     // update the bank account
     const ok = await db.updateBank(Number(gym_id), price);
     if (!ok) {
@@ -78,7 +80,8 @@ export const addMember = async (req: Request, res: Response) => {
 
 export const deleteMember = async (req: Request, res: Response) => {
   try {
-    const { gym_id, id } = req.params;
+    const { id } = req.params;
+    const gym_id = req.gym_id;
 
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({ message: "Member ID is required" });
@@ -154,7 +157,9 @@ export const updateMember = async (req: Request, res: Response) => {
 
 export const getMemberById = async (req: Request, res: Response) => {
   try {
-    const { gym_id, id } = req.params;
+    const { id } = req.params;
+    const gym_id = req.gym_id;
+
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({ message: "member id is required" });
     }
@@ -182,7 +187,7 @@ export const getMemberById = async (req: Request, res: Response) => {
 
 export const getMemberByName = async (req: Request, res: Response) => {
   try {
-    const { gym_id } = req.params;
+    const gym_id = req.gym_id;
     const { name } = req.query;
     if (!name || typeof name !== "string") {
       return res.status(400).json({ message: "member name is required" });
@@ -207,7 +212,7 @@ export const getMemberByName = async (req: Request, res: Response) => {
 
 export const listMembersOfGym = async (req: Request, res: Response) => {
   try {
-    const { gym_id } = req.params;
+    const gym_id = req.gym_id;
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "gym id is required" });
     }
@@ -230,11 +235,11 @@ export const listMembersOfGym = async (req: Request, res: Response) => {
 export const addSession = async (req: Request, res: Response) => {
   try {
     const { session_date, session_type, price, member_name } = req.body;
-    const { gym_id } = req.params;
+    const gym_id = req.gym_id;
 
     const session: Session = {
       session_date: session_date,
-      session_type: session_type,
+      session_type: session_type.toLowerCase(),
       price: price,
       member_name: member_name,
     };
@@ -284,7 +289,8 @@ export const addSession = async (req: Request, res: Response) => {
 export const listSessions = async (req: Request, res: Response) => {
   try {
     const { type } = req.body;
-    const { gym_id } = req.params;
+    const gym_id = req.gym_id;
+
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "invalide gym id" });
     }

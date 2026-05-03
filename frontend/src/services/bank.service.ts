@@ -1,10 +1,10 @@
 const server = `http://localhost:6969`;
 export const bankService = {
-  getMoney: async (gym_id: number) => {
+  getMoney: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/bank`, {
+      const res = await fetch(`${server}/api/v1/bank`, {
         method: "GET",
-        credentials: 'include',
+        credentials: "include",
       });
       const data = await res.json();
       return data;
@@ -12,4 +12,4 @@ export const bankService = {
       console.log(error);
     }
   },
-}
+};

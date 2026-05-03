@@ -18,9 +18,15 @@ import { authMiddleware } from "./middlewares/auth.middleware";
 import cookieParser from "cookie-parser";
 import bankRouter from "./routes/bank.routes";
 import offerRouter from "./routes/offer.routes";
+import reportRouter from "./routes/report.routes";
 
-//import { connectRedis } from './config/redis';
-
+declare global {
+  namespace Express {
+    interface Request {
+      gym_id?: number;
+    }
+  }
+}
 export const clients: Response[] = [];
 const app = express();
 
@@ -64,13 +70,13 @@ app.get("/", (_: Request, res: Response) => {
   res.json({ message: "Hello World!" });
 });
 
-// routes
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/:gym_id", authMiddleware, memberRouter);
+app.use("/api/v1/members", authMiddleware, memberRouter);
 app.use("/api/v1/companies", authMiddleware, companyRouter);
-app.use("/api/v1/:gym_id/logs", authMiddleware, logsRouter);
-app.use("/api/v1/:gym_id/bank", authMiddleware, bankRouter);
-app.use("/api/v1/:gym_id/offers", authMiddleware, offerRouter);
+app.use("/api/v1/logs", authMiddleware, logsRouter);
+app.use("/api/v1/bank", authMiddleware, bankRouter);
+app.use("/api/v1/offers", authMiddleware, offerRouter);
+app.use("/api/v1/reports", authMiddleware, reportRouter);
 
 // start server
 app.listen(config.port, async () => {

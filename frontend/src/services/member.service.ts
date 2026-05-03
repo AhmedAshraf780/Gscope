@@ -1,25 +1,32 @@
-const server = 'http://localhost:6969'
+const server = "http://localhost:6969";
 
 export const memberService = {
-  getMembers: async (gym_id: number) => {
+  getMembers: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/members`, {
-        credentials: 'include',
-      })
-      const data = await res.json()
-      return data
+      const res = await fetch(`${server}/api/v1/members`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      return data;
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   },
 
-  addMember: async (gym_id: number, name: string, phone: string, months: number, amount: number, notes: string) => {
+  addMember: async (
+    name: string,
+    phone: string,
+    months: number,
+    amount: number,
+    notes: string,
+    offer_id: number = 0,
+  ) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/members`, {
-        method: 'POST',
-        credentials: 'include',
+      const res = await fetch(`${server}/api/v1/members`, {
+        method: "POST",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name,
@@ -27,48 +34,48 @@ export const memberService = {
           months,
           price: amount,
           notes,
+          offer_id,
         }),
-      })
-      const data = await res.json()
-      return data
+      });
+      const data = await res.json();
+      return data;
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   },
 
-  updateMember: async (gym_id: number, id: number, months: number, amount: number) => {
+  updateMember: async (id: number, months: number, amount: number) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/members/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
+      const res = await fetch(`${server}/api/v1/members/${id}`, {
+        method: "PUT",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           months,
           price: amount,
         }),
-      })
-      const data = await res.json()
-      return data
+      });
+      const data = await res.json();
+      return data;
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   },
 
   addSession: async (
-    gym_id: number,
     member_name: string,
     phone: string,
     session_type: string,
     price: number,
   ) => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/sessions`, {
-        method: 'POST',
-        credentials: 'include',
+      const res = await fetch(`${server}/api/v1/sessions`, {
+        method: "POST",
+        credentials: "include",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           member_name,
@@ -77,23 +84,39 @@ export const memberService = {
           price,
           session_date: new Date().toISOString().slice(0, 10),
         }),
-      })
-      const data = await res.json()
-      return data
+      });
+      const data = await res.json();
+      return data;
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   },
 
-  getSessions: async (gym_id: number) => {
+  getSessions: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/${gym_id}/sessions`, {
-        credentials: 'include',
-      })
-      const data = await res.json()
-      return data
+      const res = await fetch(`${server}/api/v1/members/sessions`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      return data;
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   },
-}
+
+  deleteMember: async (id: number) => {
+    try {
+      const res = await fetch(`${server}/api/v1/members/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      console.log(error);
+    }
+  },
+};

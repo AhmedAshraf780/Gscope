@@ -38,6 +38,15 @@ type LogEntry = {
   gym_id: number;
 };
 
+type SessionEntry = {
+  id: number;
+  member_name: string;
+  phone: string;
+  session_type: string;
+  price: number;
+  session_date: string;
+};
+
 type OfferOption = {
   id: string;
   name: string;
@@ -46,9 +55,11 @@ type OfferOption = {
 type Offer = {
   id: number;
   name: string;
+  months: number;
   price: number;
   offer_end_date: string;
   created_at: string;
+  member_count?: number;
 };
 
 type ProfileMember = {
@@ -179,16 +190,7 @@ type SubscriptionAction = (typeof subscriptionActions)[number];
 const createModes = ["member", "session"] as const;
 type CreateMode = (typeof createModes)[number];
 
-const metricCards = [
-  { label: "Active subscriptions", value: "184", delta: "+12 this month" },
-  { label: "Check-ins today", value: "347", delta: "peak 6 PM - 8 PM" },
-  {
-    label: "Revenue this month",
-    value: "$18.4k",
-    delta: "+9.2% vs last month",
-  },
-  { label: "At-risk renewals", value: "23", delta: "7 need follow-up today" },
-];
+
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -206,7 +208,7 @@ export function DashboardPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bankMoney, setBankMoney] = useState<number | null>(null);
   const [profileFilter, setProfileFilter] = useState("");
-  const [logDate, setLogDate] = useState("2026-04-29");
+  const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [logMemberIdFilter, setLogMemberIdFilter] = useState("");
   const [lastCheckInInfo, setLastCheckInInfo] = useState<{
     last_attendance?: string | null;
@@ -217,11 +219,25 @@ export function DashboardPage() {
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
   const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([]);
+  const [sessions, setSessions] = useState<SessionEntry[]>([]);
+  const [profileTab, setProfileTab] = useState<"members" | "sessions">("members");
+  const [editingMember, setEditingMember] = useState<ProfileMember | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    phone: "",
+    months: "",
+    amount: "",
+    startDate: "",
+    endDate: "",
+    notes: "",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCreatingOffer, setIsCreatingOffer] = useState(false);
   const [offerForm, setOfferForm] = useState({
     name: "",
+    months: "",
     price: "",
     endDate: "",
   });
@@ -250,6 +266,17 @@ export function DashboardPage() {
 
   const deferredProfileFilter = useDeferredValue(profileFilter);
 
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [offersMonth, setOffersMonth] = useState(currentMonth);
+
+  const filteredOffers = useMemo(() => {
+    if (!offersMonth) return allOffers;
+    return allOffers.filter((offer) => {
+      if (!offer.created_at) return false;
+      return offer.created_at.startsWith(offersMonth);
+    });
+  }, [offersMonth, allOffers]);
+
   const filteredMembers = useMemo(() => {
     const query = deferredProfileFilter.trim().toLowerCase();
     if (!query) {
@@ -263,6 +290,20 @@ export function DashboardPage() {
         member.phone.toLowerCase().includes(query),
     );
   }, [deferredProfileFilter, profileMembers]);
+
+  const filteredSessions = useMemo(() => {
+    const query = deferredProfileFilter.trim().toLowerCase();
+    if (!query) {
+      return sessions;
+    }
+
+    return sessions.filter(
+      (s) =>
+        String(s.id).includes(query) ||
+        s.member_name.toLowerCase().includes(query) ||
+        s.phone.toLowerCase().includes(query),
+    );
+  }, [deferredProfileFilter, sessions]);
 
   const filteredLogs = useMemo(() => {
     if (!logDate) return logs;
@@ -283,7 +324,7 @@ export function DashboardPage() {
   );
 
   const loadProfileMembers = useCallback(async () => {
-    const response = await memberService.getMembers(gymId);
+    const response = await memberService.getMembers();
 
     const records = (() => {
       if (Array.isArray(response)) {
@@ -374,7 +415,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     const loadOffers = async () => {
-      const response = await offersService.getOffers(gymId);
+      const response = await offersService.getOffers();
 
       const records = (() => {
         if (Array.isArray(response)) {
@@ -446,7 +487,7 @@ export function DashboardPage() {
   }, [toast, gymId]);
 
   const loadAllOffers = useCallback(async () => {
-    const response = await offersService.getOffers(gymId);
+    const response = await offersService.getOffers();
     if (response && Array.isArray(response)) {
       setAllOffers(response);
     } else if (
@@ -465,7 +506,7 @@ export function DashboardPage() {
   }, [gymId]);
 
   const loadAvailableOffers = useCallback(async () => {
-    const response = await offersService.getAvailableOffers(gymId);
+    const response = await offersService.getAvailableOffers();
     if (response && Array.isArray(response)) {
       setAvailableOffers(response);
     } else if (
@@ -484,10 +525,10 @@ export function DashboardPage() {
   }, [gymId]);
 
   const handleCreateOffer = async () => {
-    if (!offerForm.name || !offerForm.price || !offerForm.endDate) {
+    if (!offerForm.name || !offerForm.months || !offerForm.price || !offerForm.endDate) {
       toast({
         title: "Offer creation failed",
-        description: "Name, price, and end date are required.",
+        description: "Name, months, price, and end date are required.",
         kind: "error",
       });
       return;
@@ -495,8 +536,8 @@ export function DashboardPage() {
 
     setIsCreatingOffer(true);
     const response = await offersService.createOffer(
-      gymId,
       offerForm.name,
+      Number(offerForm.months),
       Number(offerForm.price),
       offerForm.endDate,
     );
@@ -508,7 +549,7 @@ export function DashboardPage() {
         description: "The offer was saved successfully.",
         kind: "success",
       });
-      setOfferForm({ name: "", price: "", endDate: "" });
+      setOfferForm({ name: "", months: "", price: "", endDate: "" });
       void loadAllOffers();
       void loadAvailableOffers();
     } else {
@@ -521,7 +562,7 @@ export function DashboardPage() {
   };
 
   const loadLogs = useCallback(async () => {
-    const data = await logService.getLogs(gymId);
+    const data = await logService.getLogs();
     if (Array.isArray(data)) {
       setLogs(data);
     } else if (
@@ -540,9 +581,28 @@ export function DashboardPage() {
   }, [gymId]);
 
   const loadBankData = useCallback(async () => {
-    const data = await bankService.getMoney(gymId);
+    const data = await bankService.getMoney();
     if (data && data.money !== undefined) {
       setBankMoney(data.money);
+    }
+  }, [gymId]);
+
+  const loadSessions = useCallback(async () => {
+    const data = await memberService.getSessions();
+    if (Array.isArray(data)) {
+      setSessions(data);
+    } else if (
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as any).data)
+    ) {
+      setSessions((data as any).data);
+    } else if (
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as any).sessions)
+    ) {
+      setSessions((data as any).sessions);
     }
   }, [gymId]);
 
@@ -553,6 +613,7 @@ export function DashboardPage() {
       void loadBankData();
       void loadAllOffers();
       void loadAvailableOffers();
+      void loadSessions();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -562,6 +623,7 @@ export function DashboardPage() {
     loadBankData,
     loadAllOffers,
     loadAvailableOffers,
+    loadSessions,
   ]);
 
   useEffect(() => {
@@ -575,7 +637,7 @@ export function DashboardPage() {
       const memberId = Number(logMemberIdFilter.trim());
       if (isNaN(memberId) || memberId <= 0) return;
 
-      const logsData = await logService.getLogsByMemberId(gymId, memberId);
+      const logsData = await logService.getLogsByMemberId(memberId);
       if (Array.isArray(logsData)) {
         setLogs(logsData);
       } else if (
@@ -594,7 +656,7 @@ export function DashboardPage() {
         setLogs([]);
       }
 
-      const lastCheckIn = await logService.getLastCheckIn(gymId, memberId);
+      const lastCheckIn = await logService.getLastCheckIn(memberId);
       if (lastCheckIn && !lastCheckIn.message) {
         setLastCheckInInfo(lastCheckIn);
       } else {
@@ -616,7 +678,7 @@ export function DashboardPage() {
       return;
     }
 
-    const res = await logService.createLog(gymId, memberIdNum);
+    const res = await logService.createLog(memberIdNum);
     if (res && res.message === "Log created successfully") {
       toast({
         title: "Check-in successful",
@@ -647,7 +709,6 @@ export function DashboardPage() {
 
       setIsCreating(true);
       const response = await memberService.addSession(
-        gymId,
         sessionForm.name.trim(),
         sessionForm.phone.trim(),
         sessionForm.sessionType === "else"
@@ -690,12 +751,12 @@ export function DashboardPage() {
 
     setIsCreating(true);
     const response = await memberService.addMember(
-      gymId,
       addForm.name.trim(),
       addForm.phone.trim(),
       Number(addForm.numberOfMonths) || 0,
       Number(addForm.amount) || 0,
       addForm.notes.trim(),
+      Number(addForm.offerId) || 0,
     );
     setIsCreating(false);
 
@@ -764,7 +825,6 @@ export function DashboardPage() {
 
     setIsUpdating(true);
     const response = await memberService.updateMember(
-      gymId,
       id,
       Number(updateForm.numberOfMonths) || 0,
       Number(updateForm.amount) || 0,
@@ -816,6 +876,93 @@ export function DashboardPage() {
     navigate("/signin", { replace: true });
   };
 
+  const openEditMember = (member: ProfileMember) => {
+    setEditingMember(member);
+    setEditForm({
+      months: member.months,
+      amount: member.amount,
+      phone: member.phone,
+      notes: member.notes,
+      name: member.name,
+      startDate: member.startDate,
+      endDate: member.endDate,
+    });
+  };
+
+  const closeEditMember = () => {
+    setEditingMember(null);
+  };
+
+  const handleUpdateInline = async () => {
+    if (!editingMember) return;
+    const id = Number(editingMember.id);
+    if (Number.isNaN(id)) {
+      toast({
+        title: "Update failed",
+        description: "Invalid member ID.",
+        kind: "error",
+      });
+      return;
+    }
+
+    setIsUpdating(true);
+    const response = await memberService.updateMember(
+      id,
+      Number(editForm.months) || 0,
+      Number(editForm.amount) || 0,
+    );
+    setIsUpdating(false);
+
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: "Update failed",
+        description: getResponseMessage(response),
+        kind: "error",
+      });
+      return;
+    }
+
+    toast({
+      title: "Member updated",
+      description: "The member was updated successfully.",
+      kind: "success",
+    });
+    await loadProfileMembers();
+    setEditingMember(null);
+  };
+
+  const handleDeleteMember = async (member: ProfileMember) => {
+    const id = Number(member.id);
+    if (Number.isNaN(id)) {
+      toast({
+        title: "Delete failed",
+        description: "Invalid member ID.",
+        kind: "error",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    const response = await memberService.deleteMember(id);
+    setIsDeleting(false);
+
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: "Delete failed",
+        description: getResponseMessage(response),
+        kind: "error",
+      });
+      return;
+    }
+
+    toast({
+      title: "Member deleted",
+      description: "The member was removed successfully.",
+      kind: "success",
+    });
+    await loadProfileMembers();
+  };
+
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
       <div className="pointer-events-none fixed inset-0 opacity-90">
@@ -832,7 +979,7 @@ export function DashboardPage() {
                 Owner dashboard
               </div>
               <h1 className="mt-4 font-display text-3xl text-white sm:text-4xl xl:text-[3.35rem]">
-                Run the gym from one control surface.
+                Welcome, {(auth?.raw as any)?.name || "Gym"}!
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)] sm:text-base">
                 Manage subscriptions, profiles, logs, and analytics with the
@@ -896,20 +1043,7 @@ export function DashboardPage() {
           </div>
         </header>
 
-        <section className="mt-4 grid gap-4 lg:grid-cols-4">
-          {metricCards.map((card) => (
-            <article
-              key={card.label}
-              className="rounded-[1.5rem] border border-[var(--line)] bg-white/6 p-4"
-            >
-              <p className="text-sm text-[var(--muted)]">{card.label}</p>
-              <p className="mt-2 font-display text-3xl text-white">
-                {card.value}
-              </p>
-              <p className="mt-2 text-sm text-[var(--sand)]">{card.delta}</p>
-            </article>
-          ))}
-        </section>
+
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-3">
@@ -1046,17 +1180,22 @@ export function DashboardPage() {
                               </span>
                               <select
                                 value={addForm.offerId}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                  const selected = availableOffers.find(
+                                    (o) => String(o.id) === event.target.value,
+                                  );
                                   setAddForm((current) => ({
                                     ...current,
                                     offerId: event.target.value,
-                                  }))
-                                }
-                                className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                                    numberOfMonths: selected ? String(selected.months) : current.numberOfMonths,
+                                    amount: selected ? String(selected.price) : current.amount,
+                                  }));
+                                }}
+                                className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
                               >
-                                <option value="">Select an offer</option>
-                                {offers.map((offer) => (
-                                  <option key={offer.id} value={offer.id}>
+                                <option value="" className="bg-[#09111d] text-white">Select an offer</option>
+                                {availableOffers.map((offer) => (
+                                  <option key={offer.id} value={offer.id} className="bg-[#09111d] text-white">
                                     {offer.name}
                                   </option>
                                 ))}
@@ -1143,22 +1282,22 @@ export function DashboardPage() {
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                             />
                             <label className="block">
-                              <span className="mb-2 block text-sm text-[var(--muted)]">
-                                Session type
-                              </span>
-                              <select
-                                value={sessionForm.sessionType}
-                                onChange={(event) =>
-                                  setSessionForm((current) => ({
-                                    ...current,
-                                    sessionType: event.target.value,
-                                  }))
-                                }
-                                className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
-                              >
-                                <option value="gym">Gym</option>
-                                <option value="football">Football</option>
-                                <option value="else">Else</option>
+                                <span className="mb-2 block text-sm text-[var(--muted)]">
+                                  Session type
+                                </span>
+                                <select
+                                  value={sessionForm.sessionType}
+                                  onChange={(event) =>
+                                    setSessionForm((current) => ({
+                                      ...current,
+                                      sessionType: event.target.value,
+                                    }))
+                                  }
+                                  className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                                >
+                                  <option value="gym" className="bg-[#09111d] text-white">Gym</option>
+                                  <option value="football" className="bg-[#09111d] text-white">Football</option>
+                                  <option value="else" className="bg-[#09111d] text-white">Else</option>
                               </select>
                             </label>
                             <input
@@ -1207,25 +1346,30 @@ export function DashboardPage() {
                           className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                         />
                         <label className="block">
-                          <span className="mb-2 block text-sm text-[var(--muted)]">
-                            Offers
-                          </span>
-                          <select
-                            value={updateForm.offerId}
-                            onChange={(event) =>
-                              setUpdateForm((current) => ({
-                                ...current,
-                                offerId: event.target.value,
-                              }))
-                            }
-                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
-                          >
-                            <option value="">Select an offer</option>
-                            {offers.map((offer) => (
-                              <option key={offer.id} value={offer.id}>
-                                {offer.name}
-                              </option>
-                            ))}
+                            <span className="mb-2 block text-sm text-[var(--muted)]">
+                              Offers
+                            </span>
+                            <select
+                              value={updateForm.offerId}
+                              onChange={(event) => {
+                                const selected = availableOffers.find(
+                                  (o) => String(o.id) === event.target.value,
+                                );
+                                setUpdateForm((current) => ({
+                                  ...current,
+                                  offerId: event.target.value,
+                                  numberOfMonths: selected ? String(selected.months) : current.numberOfMonths,
+                                  amount: selected ? String(selected.price) : current.amount,
+                                }));
+                              }}
+                              className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                            >
+                                <option value="" className="bg-[#09111d] text-white">Select an offer</option>
+                                {availableOffers.map((offer) => (
+                                  <option key={offer.id} value={offer.id} className="bg-[#09111d] text-white">
+                                    {offer.name}
+                                  </option>
+                                ))}
                           </select>
                         </label>
                         <div className="grid gap-3 lg:grid-cols-2">
@@ -1275,102 +1419,265 @@ export function DashboardPage() {
                       Profiles pane
                     </p>
                     <h2 className="mt-3 font-display text-3xl text-white">
-                      Member table with database-style visibility.
+                      Members and sessions at a glance.
                     </h2>
                   </div>
-                  <input
-                    value={profileFilter}
-                    onChange={(event) =>
-                      startTransition(() =>
-                        setProfileFilter(event.target.value),
-                      )
-                    }
-                    placeholder="Filter by id, name, or phone"
-                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)] lg:max-w-sm"
-                  />
-                </div>
-
-                <div className="overflow-hidden rounded-[1.5rem] border border-white/10">
-                  <div className="max-h-[760px] overflow-auto">
-                    <table className="min-w-full bg-[#09111d] text-left text-sm">
-                      <thead className="sticky top-0 bg-[#101827] text-[var(--sand)]">
-                        <tr>
-                          {[
-                            "ID",
-                            "Name",
-                            "Phone",
-                            "Active",
-                            "Months",
-                            "Amount",
-                            "Start Date",
-                            "End Date",
-                            "Notes",
-                          ].map((column) => (
-                            <th
-                              key={column}
-                              className="px-4 py-4 font-medium whitespace-nowrap"
-                            >
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredMembers.map((member) => (
-                          <tr
-                            key={member.id}
-                            className="border-t border-white/8 text-[var(--muted)]"
-                          >
-                            {(() => {
-                              const activity = getMemberActivity(
-                                member.endDate,
-                              );
-
-                              return (
-                                <>
-                                  <td className="px-4 py-4 whitespace-nowrap text-white">
-                                    {member.id}
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    {member.name}
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    {member.phone}
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    <span
-                                      className={[
-                                        "rounded-full px-3 py-1 text-xs font-medium",
-                                        activity.className,
-                                      ].join(" ")}
-                                    >
-                                      {activity.label}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    {member.months}
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    {member.amount}
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    {member.startDate}
-                                  </td>
-                                  <td className="px-4 py-4 whitespace-nowrap">
-                                    {member.endDate}
-                                  </td>
-                                  <td className="px-4 py-4">
-                                    {member.notes || "-"}
-                                  </td>
-                                </>
-                              );
-                            })()}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex rounded-2xl border border-white/10 bg-[#09111d] p-1 gap-1">
+                      {(["members", "sessions"] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setProfileTab(tab)}
+                          className={[
+                            "rounded-xl px-5 py-2.5 text-sm font-semibold capitalize transition whitespace-nowrap",
+                            profileTab === tab
+                              ? "bg-[var(--accent)] text-[#08111f]"
+                              : "text-[var(--muted)] hover:text-white",
+                          ].join(" ")}
+                        >
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={profileFilter}
+                      onChange={(event) =>
+                        startTransition(() =>
+                          setProfileFilter(event.target.value),
+                        )
+                      }
+                      placeholder="Filter by id, name, or phone"
+                      className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)] lg:max-w-sm"
+                    />
                   </div>
                 </div>
+
+                {profileTab === "members" ? (
+                  <>
+                    <div className="overflow-hidden rounded-[1.5rem] border border-white/10">
+                      <div className="max-h-[760px] overflow-auto">
+                        <table className="min-w-full bg-[#09111d] text-left text-sm">
+                          <thead className="sticky top-0 bg-[#101827] text-[var(--sand)]">
+                            <tr>
+                              {[
+                                "ID",
+                                "Name",
+                                "Phone",
+                                "Active",
+                                "Months",
+                                "Amount",
+                                "Start Date",
+                                "End Date",
+                                "Notes",
+                              ].map((column) => (
+                                <th
+                                  key={column}
+                                  className="px-4 py-4 font-medium whitespace-nowrap"
+                                >
+                                  {column}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredMembers.map((member) => (
+                              <tr
+                                key={member.id}
+                                onClick={() => openEditMember(member)}
+                                className="border-t border-white/8 text-[var(--muted)] cursor-pointer hover:bg-white/4 transition"
+                              >
+                                {(() => {
+                                  const activity = getMemberActivity(
+                                    member.endDate,
+                                  );
+
+                                  return (
+                                    <>
+                                      <td className="px-4 py-4 whitespace-nowrap text-white">
+                                        {member.id}
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        {member.name}
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        {member.phone}
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        <span
+                                          className={[
+                                            "rounded-full px-3 py-1 text-xs font-medium",
+                                            activity.className,
+                                          ].join(" ")}
+                                        >
+                                          {activity.label}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        {member.months}
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        {member.amount}
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        {member.startDate}
+                                      </td>
+                                      <td className="px-4 py-4 whitespace-nowrap">
+                                        {member.endDate}
+                                      </td>
+                                      <td className="px-4 py-4">
+                                        {member.notes || "-"}
+                                      </td>
+                                    </>
+                                  );
+                                })()}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {editingMember && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                        <div className="w-full max-w-lg rounded-[1.5rem] border border-white/10 bg-[#0d1929] p-6 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-display text-xl text-white">
+                              Edit Member
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={closeEditMember}
+                              className="rounded-full p-2 text-[var(--muted)] hover:text-white transition"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <input
+                            value={editForm.name}
+                            disabled
+                            className="w-full rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-white/50 outline-none cursor-not-allowed"
+                          />
+
+                          <input
+                            value={editForm.phone}
+                            onChange={(e) =>
+                              setEditForm((c) => ({ ...c, phone: e.target.value }))
+                            }
+                            placeholder="Phone"
+                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                          />
+
+                          <div className="grid gap-3 lg:grid-cols-2">
+                            <input
+                              value={editForm.months}
+                              onChange={(e) =>
+                                setEditForm((c) => ({ ...c, months: e.target.value }))
+                              }
+                              placeholder="Months"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                            <input
+                              value={editForm.amount}
+                              onChange={(e) =>
+                                setEditForm((c) => ({ ...c, amount: e.target.value }))
+                              }
+                              placeholder="Amount"
+                              className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                            />
+                          </div>
+
+                          <div className="grid gap-3 lg:grid-cols-2">
+                            <input
+                              value={editForm.startDate}
+                              disabled
+                              className="w-full rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-white/50 outline-none cursor-not-allowed"
+                            />
+                            <input
+                              value={editForm.endDate}
+                              disabled
+                              className="w-full rounded-2xl border border-white/10 bg-white/4 px-4 py-3 text-white/50 outline-none cursor-not-allowed"
+                            />
+                          </div>
+
+                          <textarea
+                            value={editForm.notes}
+                            onChange={(e) =>
+                              setEditForm((c) => ({ ...c, notes: e.target.value }))
+                            }
+                            placeholder="Notes"
+                            rows={3}
+                            className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                          />
+
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={handleUpdateInline}
+                              disabled={isUpdating}
+                              className="flex-1 rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                            >
+                              {isUpdating ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMember(editingMember)}
+                              disabled={isDeleting}
+                              className="flex-1 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-rose-300 hover:bg-rose-500/20 transition"
+                            >
+                              {isDeleting ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredSessions.length > 0 ? (
+                      filteredSessions.map((session) => (
+                        <article
+                          key={session.id}
+                          className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-5"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="font-display text-lg text-white">
+                                {session.member_name}
+                              </p>
+                              <p className="mt-1 text-sm text-[var(--muted)]">
+                                {session.phone}
+                              </p>
+                            </div>
+                            <span
+                              className={[
+                                "rounded-full px-3 py-1 text-xs font-medium",
+                                session.session_type === "gym"
+                                  ? "bg-emerald-400/14 text-emerald-200"
+                                  : session.session_type === "football"
+                                    ? "bg-blue-400/14 text-blue-200"
+                                    : "bg-amber-400/14 text-amber-200",
+                              ].join(" ")}
+                            >
+                              {session.session_type}
+                            </span>
+                          </div>
+                          <p className="mt-4 font-display text-2xl text-[var(--accent)]">
+                            ${session.price}
+                          </p>
+                          <p className="mt-2 text-xs text-[var(--muted)]">
+                            {new Date(session.session_date).toLocaleDateString()}
+                          </p>
+                        </article>
+                      ))
+                    ) : (
+                      <p className="col-span-full text-center text-[var(--muted)] py-12">
+                        No sessions recorded.
+                      </p>
+                    )}
+                  </div>
+                )}
               </section>
             ) : null}
 
@@ -1644,13 +1951,21 @@ export function DashboardPage() {
 
             {activePane === "offers" ? (
               <section className="space-y-6">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
-                    Offers pane
-                  </p>
-                  <h2 className="mt-3 font-display text-3xl text-white">
-                    Create and manage gym offers.
-                  </h2>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
+                      Offers pane
+                    </p>
+                    <h2 className="mt-3 font-display text-3xl text-white">
+                      Create and manage gym offers.
+                    </h2>
+                  </div>
+                  <input
+                    type="month"
+                    value={offersMonth}
+                    onChange={(e) => setOffersMonth(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)] lg:max-w-xs"
+                  />
                 </div>
 
                 <div className="grid gap-6 xl:grid-cols-[400px_minmax(0,1fr)]">
@@ -1665,6 +1980,15 @@ export function DashboardPage() {
                           setOfferForm({ ...offerForm, name: e.target.value })
                         }
                         placeholder="Offer Name"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <input
+                        type="number"
+                        value={offerForm.months}
+                        onChange={(e) =>
+                          setOfferForm({ ...offerForm, months: e.target.value })
+                        }
+                        placeholder="Months"
                         className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                       />
                       <input
@@ -1734,7 +2058,7 @@ export function DashboardPage() {
 
                     <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5">
                       <h3 className="mb-4 font-display text-xl text-white">
-                        All Offers History
+                        Offers History
                       </h3>
                       <div className="overflow-x-auto">
                         <table className="min-w-full text-left text-sm">
@@ -1742,6 +2066,10 @@ export function DashboardPage() {
                             <tr>
                               <th className="px-4 py-3 font-medium">Name</th>
                               <th className="px-4 py-3 font-medium">Price</th>
+                              <th className="px-4 py-3 font-medium">Months</th>
+                              <th className="px-4 py-3 font-medium">
+                                Members
+                              </th>
                               <th className="px-4 py-3 font-medium">
                                 End Date
                               </th>
@@ -1751,27 +2079,42 @@ export function DashboardPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {allOffers.map((offer) => (
-                              <tr
-                                key={offer.id}
-                                className="border-b border-white/5 text-[var(--muted)]"
-                              >
-                                <td className="px-4 py-3 text-white">
-                                  {offer.name}
-                                </td>
-                                <td className="px-4 py-3">${offer.price}</td>
-                                <td className="px-4 py-3">
-                                  {new Date(
-                                    offer.offer_end_date,
-                                  ).toLocaleDateString()}
-                                </td>
-                                <td className="px-4 py-3">
-                                  {new Date(
-                                    offer.created_at,
-                                  ).toLocaleDateString()}
+                            {filteredOffers.length > 0 ? (
+                              filteredOffers.map((offer) => (
+                                <tr
+                                  key={offer.id}
+                                  className="border-b border-white/5 text-[var(--muted)]"
+                                >
+                                  <td className="px-4 py-3 text-white">
+                                    {offer.name}
+                                  </td>
+                                  <td className="px-4 py-3">${offer.price}</td>
+                                  <td className="px-4 py-3">{offer.months}</td>
+                                  <td className="px-4 py-3">
+                                    {offer.member_count ?? 0}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {new Date(
+                                      offer.offer_end_date,
+                                    ).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {new Date(
+                                      offer.created_at,
+                                    ).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={6}
+                                  className="p-8 text-center text-[var(--muted)]"
+                                >
+                                  No offers for this month.
                                 </td>
                               </tr>
-                            ))}
+                            )}
                           </tbody>
                         </table>
                       </div>

@@ -1,28 +1,6 @@
-import { Request, Response } from 'express';
-import { db } from '../database';
+import { Request, Response } from "express";
+import { db } from "../database";
 
-// WARNING: Unused controller
-export const createCompany = async (req: Request, res: Response) => {
-  try {
-    const { name, email, phone, password } = req.body;
-    const companyId = await db.createCompany({
-      name,
-      email,
-      phone,
-      password,
-      created_at: '',
-      updated_at: '',
-    });
-    if (companyId) {
-      res.status(201).json({ company_id: companyId });
-    } else {
-      res.status(500).json({ error: "Company not created" });
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-}
 export const getCompanyById = async (req: Request, res: Response) => {
   try {
     const { company_id } = req.params;
@@ -36,7 +14,7 @@ export const getCompanyById = async (req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 export const getAllCompanies = async (_req: Request, res: Response) => {
   try {
     const companies = await db.getAllCompanies();
@@ -45,7 +23,7 @@ export const getAllCompanies = async (_req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 export const updateCompany = async (req: Request, res: Response) => {
   try {
     const { company_id } = req.params;
@@ -56,15 +34,15 @@ export const updateCompany = async (req: Request, res: Response) => {
       email,
       phone,
       password,
-      created_at: '',
-      updated_at: '',
+      created_at: "",
+      updated_at: "",
     });
     res.status(200).json({ message: "Company updated successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
+};
 export const deleteCompanyById = async (_req: Request, res: Response) => {
   try {
     const { company_id } = _req.params;
@@ -74,5 +52,4 @@ export const deleteCompanyById = async (_req: Request, res: Response) => {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
   }
-}
-
+};
