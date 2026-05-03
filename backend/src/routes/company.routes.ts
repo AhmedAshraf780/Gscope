@@ -11,5 +11,4 @@ router.get("/:company_id", getCompanyById);
 router.get("/", getAllCompanies);
 router.put("/:company_id", updateCompany);
 router.delete("/:company_id", deleteCompanyById);
-
 export default router;

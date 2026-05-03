@@ -7,7 +7,6 @@ import { SignUpPage } from './pages/SignUpPage'
 import { ValidateOtpPage } from './pages/ValidateOtpPage'
 import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
 import { PendingOtpRoute, ProtectedRoute, PublicOnlyRoute } from './routes/RouteGuards'
-import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
 
 function App() {
   return (
@@ -22,9 +21,6 @@ function App() {
         <Route element={<PendingOtpRoute />}>
           <Route path="/validateOtp" element={<ValidateOtpPage />} />
           <Route path="/updatepassword" element={<UpdatePasswordPage />} />
-        </Route>
-        <Route element={<PendingOtpRoute />}>
-          <Route path="/restorepassword" element={<UpdatePasswordPage />} />
         </Route>
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<DashboardPage />} />

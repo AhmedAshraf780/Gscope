@@ -8,7 +8,7 @@ import { Member, Session } from "../DAOs/memberDao";
 import { attendance_logs } from "../DAOs/logsDao";
 import { LastAttendance } from "../DAOs/logsDao";
 import { Offer } from "../DAOs/offerDao";
-
+import { Expense } from "../DAOs/expensesDao";
 export class SqlDataStore implements Datastore {
   private db!: Database<sqlite3.Database, sqlite3.Statement>;
 
@@ -591,4 +591,142 @@ export class SqlDataStore implements Datastore {
       return false;
     }
   }
+  /*==========================================================================
+   *
+   *
+   *             EXPENSES DAO IMPLEMENTATION  ( START )
+   *
+   *=======================================================================*/
+
+
+  async createExpense(expense: Expense): Promise<number | null> {
+    try {
+      const result = await this.db.run(
+        `INSERT INTO expenses 
+                (title, amount, date, category, notes, created_at)
+                VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+        [
+          expense.title,
+          expense.amount,
+          expense.date,
+          expense.category,
+          expense.notes
+        ]
+      );
+      return result.lastID || null;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+
+  async getAllExpenses(): Promise<Expense[]> {
+    try {
+      return await this.db.all(`SELECT * FROM expenses`);
+    } catch (e) {
+      console.log(e);
+      return [];
+    }
+  }
+
+  async getExpenseById(id: number): Promise<Expense | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT * FROM expenses WHERE id = ?`,
+        [id]
+      );
+      return row || null;
+    } catch (e) {
+      console.log(e);
+      return null;
+    }
+  }
+
+  async updateExpense(expense: Expense): Promise<boolean> {
+    try {
+      const result = await this.db.run(
+        `UPDATE expenses 
+                 SET title = ?, amount = ?, date = ?, category = ?, notes = ?
+                 WHERE id = ?`,
+        [
+          expense.title,
+          expense.amount,
+          expense.date,
+          expense.category,
+          expense.notes,
+          expense.id
+        ]
+      );
+      return (result?.changes ?? 0) > 0;
+    } catch (e) {
+      console.log(e);
+      return false;
+    }
+  }
+
+  async deleteExpense(id: number): Promise<boolean> {
+    try {
+      const result = await this.db.run(
+        `DELETE FROM expenses WHERE id = ?`,
+        [id]
+      );
+      return (result?.changes ?? 0) > 0;
+    } catch (e) {
+      console.log(e);
+      return false;
+    }
+  }
+  async getTotalExpenses(): Promise<number> {
+    try {
+      const row = await this.db.get(
+        `SELECT SUM(amount) as total FROM expenses`
+      );
+      return row?.total || 0;
+    } catch (e) {
+      console.log(e);
+      return 0;
+    }
+  }
+
+  async getExpensesByDateRange(start: string, end: string): Promise<Expense[]> {
+    try {
+      return await this.db.all(
+        `SELECT * FROM expenses 
+                 WHERE date BETWEEN ? AND ?`,
+        [start, end]
+      );
+    } catch (e) {
+      console.log(e);
+      return [];
+    }
+  }
+
+  async getTotalByDateRange(start: string, end: string): Promise<number> {
+    try {
+      const row = await this.db.get(
+        `SELECT SUM(amount) as total 
+                 FROM expenses 
+                 WHERE date BETWEEN ? AND ?`,
+        [start, end]
+      );
+      return row?.total || 0;
+    } catch (e) {
+      console.log(e);
+      return 0;
+    }
+  }
+
+  async getTotalByCategory(): Promise<{ category: string; total: number }[]> {
+    try {
+      return await this.db.all(
+        `SELECT category, SUM(amount) as total 
+                 FROM expenses 
+                 GROUP BY category`
+      );
+    } catch (e) {
+      console.log(e);
+      return [];
+    }
+  }
 }
+

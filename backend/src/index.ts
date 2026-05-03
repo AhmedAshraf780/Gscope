@@ -19,6 +19,7 @@ import cookieParser from "cookie-parser";
 import bankRouter from "./routes/bank.routes";
 import offerRouter from "./routes/offer.routes";
 import reportRouter from "./routes/report.routes";
+import expensesRouter from "./routes/expenses.routes";
 
 declare global {
   namespace Express {
@@ -77,6 +78,8 @@ app.use("/api/v1/logs", authMiddleware, logsRouter);
 app.use("/api/v1/bank", authMiddleware, bankRouter);
 app.use("/api/v1/offers", authMiddleware, offerRouter);
 app.use("/api/v1/reports", authMiddleware, reportRouter);
+app.use("/api/v1/expenses", authMiddleware, expensesRouter);
+
 
 // start server
 app.listen(config.port, async () => {
