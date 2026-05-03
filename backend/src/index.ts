@@ -20,6 +20,7 @@ import bankRouter from "./routes/bank.routes";
 import offerRouter from "./routes/offer.routes";
 import reportRouter from "./routes/report.routes";
 import expensesRouter from "./routes/expenses.routes";
+import { addSession, listSessions } from "./controllers/MemberController";
 
 declare global {
   namespace Express {
@@ -80,6 +81,8 @@ app.use("/api/v1/offers", authMiddleware, offerRouter);
 app.use("/api/v1/reports", authMiddleware, reportRouter);
 app.use("/api/v1/expenses", authMiddleware, expensesRouter);
 
+app.post("/api/v1/sessions", authMiddleware, addSession);
+app.get("/api/v1/sessions", authMiddleware, listSessions);
 
 // start server
 app.listen(config.port, async () => {

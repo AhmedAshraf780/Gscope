@@ -16,6 +16,8 @@ import { memberService } from "../services/member.service";
 import { offersService } from "../services/offers.service";
 import { logService } from "../services/logs.service";
 import { bankService } from "../services/bank.service";
+import { expensesService } from "../services/expenses.service";
+import { analysisService } from "../services/analysis.service";
 import { useAuth } from "../auth/useAuth";
 import { useToast } from "../toast/useToast";
 
@@ -45,6 +47,23 @@ type SessionEntry = {
   session_type: string;
   price: number;
   session_date: string;
+};
+
+type ExpenseEntry = {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+  category: string;
+  notes: string;
+};
+
+type BasicAnalysis = {
+  todayrevenue: number;
+  mothrevenue: number;
+  todaysessions: number;
+  todayMembers: number;
+  activeMembers: number;
 };
 
 type OfferOption = {
@@ -182,6 +201,7 @@ const panes = [
   "analytics",
   "bank",
   "offers",
+  "expenses",
 ] as const;
 
 type Pane = (typeof panes)[number];
@@ -189,8 +209,6 @@ const subscriptionActions = ["checkin", "create", "update"] as const;
 type SubscriptionAction = (typeof subscriptionActions)[number];
 const createModes = ["member", "session"] as const;
 type CreateMode = (typeof createModes)[number];
-
-
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -208,7 +226,9 @@ export function DashboardPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bankMoney, setBankMoney] = useState<number | null>(null);
   const [profileFilter, setProfileFilter] = useState("");
-  const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [logDate, setLogDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
   const [logMemberIdFilter, setLogMemberIdFilter] = useState("");
   const [lastCheckInInfo, setLastCheckInInfo] = useState<{
     last_attendance?: string | null;
@@ -220,8 +240,33 @@ export function DashboardPage() {
   const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
   const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([]);
   const [sessions, setSessions] = useState<SessionEntry[]>([]);
-  const [profileTab, setProfileTab] = useState<"members" | "sessions">("members");
-  const [editingMember, setEditingMember] = useState<ProfileMember | null>(null);
+  const [profileTab, setProfileTab] = useState<"members" | "sessions">(
+    "members",
+  );
+  const [editingMember, setEditingMember] = useState<ProfileMember | null>(
+    null,
+  );
+  const [expenses, setExpenses] = useState<ExpenseEntry[]>([]);
+  const [expenseForm, setExpenseForm] = useState({
+    title: "",
+    amount: "",
+    date: new Date().toISOString().slice(0, 10),
+    category: "",
+    notes: "",
+  });
+  const [editingExpense, setEditingExpense] = useState<ExpenseEntry | null>(
+    null,
+  );
+  const [editExpenseForm, setEditExpenseForm] = useState({
+    title: "",
+    amount: "",
+    date: "",
+    category: "",
+    notes: "",
+  });
+  const [isExpenseCreating, setIsExpenseCreating] = useState(false);
+  const [isExpenseUpdating, setIsExpenseUpdating] = useState(false);
+  const [analysis, setAnalysis] = useState<BasicAnalysis | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
     phone: "",
@@ -311,17 +356,6 @@ export function DashboardPage() {
       (entry) => entry.check_in_time && entry.check_in_time.startsWith(logDate),
     );
   }, [logDate, logs]);
-
-  const activeCount = members.filter(
-    (member) => member.status === "Active",
-  ).length;
-  const expiringCount = members.filter(
-    (member) => member.status !== "Active",
-  ).length;
-  const totalSessionsLeft = members.reduce(
-    (sum, member) => sum + member.sessionsLeft,
-    0,
-  );
 
   const loadProfileMembers = useCallback(async () => {
     const response = await memberService.getMembers();
@@ -525,7 +559,12 @@ export function DashboardPage() {
   }, [gymId]);
 
   const handleCreateOffer = async () => {
-    if (!offerForm.name || !offerForm.months || !offerForm.price || !offerForm.endDate) {
+    if (
+      !offerForm.name ||
+      !offerForm.months ||
+      !offerForm.price ||
+      !offerForm.endDate
+    ) {
       toast({
         title: "Offer creation failed",
         description: "Name, months, price, and end date are required.",
@@ -606,6 +645,155 @@ export function DashboardPage() {
     }
   }, [gymId]);
 
+  const loadExpenses = useCallback(async () => {
+    const data = await expensesService.getAllExpenses();
+    if (Array.isArray(data)) {
+      setExpenses(data);
+    } else if (
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as any).data)
+    ) {
+      setExpenses((data as any).data);
+    } else if (
+      data &&
+      typeof data === "object" &&
+      Array.isArray((data as any).expenses)
+    ) {
+      setExpenses((data as any).expenses);
+    }
+  }, [gymId]);
+
+  const loadAnalysis = useCallback(async () => {
+    const data = await analysisService.getBasicAnalysis();
+    if (data && typeof data === "object") {
+      setAnalysis({
+        todayrevenue: data.todayrevenue ?? 0,
+        mothrevenue: data.mothrevenue ?? 0,
+        todaysessions: data.todaysessions ?? 0,
+        todayMembers: data.todayMembers ?? 0,
+        activeMembers: data.activeMembers ?? 0,
+      });
+    }
+  }, []);
+
+  const handleAddExpense = async () => {
+    if (!expenseForm.title || !expenseForm.amount) {
+      toast({
+        title: "Expense creation failed",
+        description: "Title and amount are required.",
+        kind: "error",
+      });
+      return;
+    }
+
+    setIsExpenseCreating(true);
+    const response = await expensesService.addExpense(
+      expenseForm.title.trim(),
+      Number(expenseForm.amount),
+      expenseForm.date,
+      expenseForm.category.trim(),
+      expenseForm.notes.trim(),
+    );
+    setIsExpenseCreating(false);
+
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: "Expense creation failed",
+        description: getResponseMessage(response),
+        kind: "error",
+      });
+      return;
+    }
+
+    toast({
+      title: "Expense created",
+      description: "The expense was saved successfully.",
+      kind: "success",
+    });
+    setExpenseForm({
+      title: "",
+      amount: "",
+      date: new Date().toISOString().slice(0, 10),
+      category: "",
+      notes: "",
+    });
+    await loadExpenses();
+  };
+
+  const openEditExpense = (expense: ExpenseEntry) => {
+    setEditingExpense(expense);
+    setEditExpenseForm({
+      title: expense.title,
+      amount: String(expense.amount),
+      date: expense.date,
+      category: expense.category,
+      notes: expense.notes,
+    });
+  };
+
+  const closeEditExpense = () => {
+    setEditingExpense(null);
+  };
+
+  const handleUpdateExpense = async () => {
+    if (!editingExpense || !editExpenseForm.title || !editExpenseForm.amount) {
+      toast({
+        title: "Update failed",
+        description: "Title and amount are required.",
+        kind: "error",
+      });
+      return;
+    }
+
+    setIsExpenseUpdating(true);
+    const response = await expensesService.updateExpense(
+      editingExpense.id,
+      editExpenseForm.title.trim(),
+      Number(editExpenseForm.amount),
+      editExpenseForm.date,
+      editExpenseForm.category.trim(),
+      editExpenseForm.notes.trim(),
+    );
+    setIsExpenseUpdating(false);
+
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: "Update failed",
+        description: getResponseMessage(response),
+        kind: "error",
+      });
+      return;
+    }
+
+    toast({
+      title: "Expense updated",
+      description: "The expense was updated successfully.",
+      kind: "success",
+    });
+    await loadExpenses();
+    setEditingExpense(null);
+  };
+
+  const handleDeleteExpense = async (expense: ExpenseEntry) => {
+    const response = await expensesService.deleteExpense(expense.id);
+    if (!response || !isResponseSuccess(response)) {
+      toast({
+        title: "Delete failed",
+        description: getResponseMessage(response),
+        kind: "error",
+      });
+      return;
+    }
+
+    toast({
+      title: "Expense deleted",
+      description: "The expense was removed successfully.",
+      kind: "success",
+    });
+    await loadExpenses();
+  };
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadProfileMembers();
@@ -614,6 +802,8 @@ export function DashboardPage() {
       void loadAllOffers();
       void loadAvailableOffers();
       void loadSessions();
+      void loadExpenses();
+      void loadAnalysis();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -624,6 +814,8 @@ export function DashboardPage() {
     loadAllOffers,
     loadAvailableOffers,
     loadSessions,
+    loadExpenses,
+    loadAnalysis,
   ]);
 
   useEffect(() => {
@@ -973,7 +1165,7 @@ export function DashboardPage() {
 
       <div className="relative mx-auto w-full max-w-[1760px] px-4 py-4 sm:px-6 lg:px-8">
         <header className="rounded-[1.75rem] border border-white/10 bg-white/6 p-5 backdrop-blur-md">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(420px,0.95fr)] xl:items-start">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.26em] text-[var(--sand)]">
                 Owner dashboard
@@ -985,65 +1177,69 @@ export function DashboardPage() {
                 Manage subscriptions, profiles, logs, and analytics with the
                 same system your front desk and staff rely on every day.
               </p>
+              {analysis && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      Today Revenue
+                    </p>
+                    <p className="mt-2 font-display text-xl text-emerald-400">
+                      ${analysis.todayrevenue}
+                    </p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      Month Revenue
+                    </p>
+                    <p className="mt-2 font-display text-xl text-emerald-400">
+                      ${analysis.mothrevenue}
+                    </p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      Today Sessions
+                    </p>
+                    <p className="mt-2 font-display text-xl text-white">
+                      {analysis.todaysessions}
+                    </p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      Today Members
+                    </p>
+                    <p className="mt-2 font-display text-xl text-white">
+                      {analysis.todayMembers}
+                    </p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                      Active Members
+                    </p>
+                    <p className="mt-2 font-display text-xl text-emerald-400">
+                      {analysis.activeMembers}
+                    </p>
+                  </article>
+                </div>
+              )}
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_auto] xl:grid-cols-1">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                    Members
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-white">
-                    {members.length}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--sand)]">
-                    {activeCount} active now
-                  </p>
-                </article>
-                <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                    Watchlist
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-white">
-                    {expiringCount}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--sand)]">
-                    paused or expired
-                  </p>
-                </article>
-                <article className="rounded-[1.25rem] border border-white/10 bg-[#09111d] p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                    Sessions Left
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-white">
-                    {totalSessionsLeft}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--sand)]">
-                    across all members
-                  </p>
-                </article>
-              </div>
-
-              <div className="flex flex-wrap gap-3 xl:justify-end">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
-                >
-                  Sign out
-                </button>
-                <Link
-                  to="/"
-                  className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"
-                >
-                  View landing
-                </Link>
-              </div>
+            <div className="flex flex-wrap gap-3 xl:justify-end xl:items-end">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
+              >
+                Sign out
+              </button>
+              <Link
+                to="/"
+                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"
+              >
+                View landing
+              </Link>
             </div>
           </div>
         </header>
-
-
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-3">
@@ -1187,15 +1383,28 @@ export function DashboardPage() {
                                   setAddForm((current) => ({
                                     ...current,
                                     offerId: event.target.value,
-                                    numberOfMonths: selected ? String(selected.months) : current.numberOfMonths,
-                                    amount: selected ? String(selected.price) : current.amount,
+                                    numberOfMonths: selected
+                                      ? String(selected.months)
+                                      : current.numberOfMonths,
+                                    amount: selected
+                                      ? String(selected.price)
+                                      : current.amount,
                                   }));
                                 }}
                                 className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
                               >
-                                <option value="" className="bg-[#09111d] text-white">Select an offer</option>
+                                <option
+                                  value=""
+                                  className="bg-[#09111d] text-white"
+                                >
+                                  Select an offer
+                                </option>
                                 {availableOffers.map((offer) => (
-                                  <option key={offer.id} value={offer.id} className="bg-[#09111d] text-white">
+                                  <option
+                                    key={offer.id}
+                                    value={offer.id}
+                                    className="bg-[#09111d] text-white"
+                                  >
                                     {offer.name}
                                   </option>
                                 ))}
@@ -1282,22 +1491,37 @@ export function DashboardPage() {
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                             />
                             <label className="block">
-                                <span className="mb-2 block text-sm text-[var(--muted)]">
-                                  Session type
-                                </span>
-                                <select
-                                  value={sessionForm.sessionType}
-                                  onChange={(event) =>
-                                    setSessionForm((current) => ({
-                                      ...current,
-                                      sessionType: event.target.value,
-                                    }))
-                                  }
-                                  className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                              <span className="mb-2 block text-sm text-[var(--muted)]">
+                                Session type
+                              </span>
+                              <select
+                                value={sessionForm.sessionType}
+                                onChange={(event) =>
+                                  setSessionForm((current) => ({
+                                    ...current,
+                                    sessionType: event.target.value,
+                                  }))
+                                }
+                                className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                              >
+                                <option
+                                  value="gym"
+                                  className="bg-[#09111d] text-white"
                                 >
-                                  <option value="gym" className="bg-[#09111d] text-white">Gym</option>
-                                  <option value="football" className="bg-[#09111d] text-white">Football</option>
-                                  <option value="else" className="bg-[#09111d] text-white">Else</option>
+                                  Gym
+                                </option>
+                                <option
+                                  value="football"
+                                  className="bg-[#09111d] text-white"
+                                >
+                                  Football
+                                </option>
+                                <option
+                                  value="else"
+                                  className="bg-[#09111d] text-white"
+                                >
+                                  Else
+                                </option>
                               </select>
                             </label>
                             <input
@@ -1346,30 +1570,43 @@ export function DashboardPage() {
                           className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
                         />
                         <label className="block">
-                            <span className="mb-2 block text-sm text-[var(--muted)]">
-                              Offers
-                            </span>
-                            <select
-                              value={updateForm.offerId}
-                              onChange={(event) => {
-                                const selected = availableOffers.find(
-                                  (o) => String(o.id) === event.target.value,
-                                );
-                                setUpdateForm((current) => ({
-                                  ...current,
-                                  offerId: event.target.value,
-                                  numberOfMonths: selected ? String(selected.months) : current.numberOfMonths,
-                                  amount: selected ? String(selected.price) : current.amount,
-                                }));
-                              }}
-                              className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                          <span className="mb-2 block text-sm text-[var(--muted)]">
+                            Offers
+                          </span>
+                          <select
+                            value={updateForm.offerId}
+                            onChange={(event) => {
+                              const selected = availableOffers.find(
+                                (o) => String(o.id) === event.target.value,
+                              );
+                              setUpdateForm((current) => ({
+                                ...current,
+                                offerId: event.target.value,
+                                numberOfMonths: selected
+                                  ? String(selected.months)
+                                  : current.numberOfMonths,
+                                amount: selected
+                                  ? String(selected.price)
+                                  : current.amount,
+                              }));
+                            }}
+                            className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                          >
+                            <option
+                              value=""
+                              className="bg-[#09111d] text-white"
                             >
-                                <option value="" className="bg-[#09111d] text-white">Select an offer</option>
-                                {availableOffers.map((offer) => (
-                                  <option key={offer.id} value={offer.id} className="bg-[#09111d] text-white">
-                                    {offer.name}
-                                  </option>
-                                ))}
+                              Select an offer
+                            </option>
+                            {availableOffers.map((offer) => (
+                              <option
+                                key={offer.id}
+                                value={offer.id}
+                                className="bg-[#09111d] text-white"
+                              >
+                                {offer.name}
+                              </option>
+                            ))}
                           </select>
                         </label>
                         <div className="grid gap-3 lg:grid-cols-2">
@@ -1563,7 +1800,10 @@ export function DashboardPage() {
                           <input
                             value={editForm.phone}
                             onChange={(e) =>
-                              setEditForm((c) => ({ ...c, phone: e.target.value }))
+                              setEditForm((c) => ({
+                                ...c,
+                                phone: e.target.value,
+                              }))
                             }
                             placeholder="Phone"
                             className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -1573,7 +1813,10 @@ export function DashboardPage() {
                             <input
                               value={editForm.months}
                               onChange={(e) =>
-                                setEditForm((c) => ({ ...c, months: e.target.value }))
+                                setEditForm((c) => ({
+                                  ...c,
+                                  months: e.target.value,
+                                }))
                               }
                               placeholder="Months"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -1581,7 +1824,10 @@ export function DashboardPage() {
                             <input
                               value={editForm.amount}
                               onChange={(e) =>
-                                setEditForm((c) => ({ ...c, amount: e.target.value }))
+                                setEditForm((c) => ({
+                                  ...c,
+                                  amount: e.target.value,
+                                }))
                               }
                               placeholder="Amount"
                               className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
@@ -1604,7 +1850,10 @@ export function DashboardPage() {
                           <textarea
                             value={editForm.notes}
                             onChange={(e) =>
-                              setEditForm((c) => ({ ...c, notes: e.target.value }))
+                              setEditForm((c) => ({
+                                ...c,
+                                notes: e.target.value,
+                              }))
                             }
                             placeholder="Notes"
                             rows={3}
@@ -1667,7 +1916,9 @@ export function DashboardPage() {
                             ${session.price}
                           </p>
                           <p className="mt-2 text-xs text-[var(--muted)]">
-                            {new Date(session.session_date).toLocaleDateString()}
+                            {new Date(
+                              session.session_date,
+                            ).toLocaleDateString()}
                           </p>
                         </article>
                       ))
@@ -2067,9 +2318,7 @@ export function DashboardPage() {
                               <th className="px-4 py-3 font-medium">Name</th>
                               <th className="px-4 py-3 font-medium">Price</th>
                               <th className="px-4 py-3 font-medium">Months</th>
-                              <th className="px-4 py-3 font-medium">
-                                Members
-                              </th>
+                              <th className="px-4 py-3 font-medium">Members</th>
                               <th className="px-4 py-3 font-medium">
                                 End Date
                               </th>
@@ -2121,6 +2370,264 @@ export function DashboardPage() {
                     </div>
                   </div>
                 </div>
+              </section>
+            ) : null}
+
+            {activePane === "expenses" ? (
+              <section className="space-y-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
+                      Expenses pane
+                    </p>
+                    <h2 className="mt-3 font-display text-3xl text-white">
+                      Track and manage gym expenses.
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+                  <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5 space-y-4 h-fit">
+                    <h3 className="font-display text-xl text-white">
+                      Add Expense
+                    </h3>
+                    <div className="space-y-3">
+                      <input
+                        value={expenseForm.title}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            title: e.target.value,
+                          })
+                        }
+                        placeholder="Title"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <input
+                        type="number"
+                        value={expenseForm.amount}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            amount: e.target.value,
+                          })
+                        }
+                        placeholder="Amount"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <input
+                        type="date"
+                        value={expenseForm.date}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            date: e.target.value,
+                          })
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                      />
+                      <input
+                        value={expenseForm.category}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            category: e.target.value,
+                          })
+                        }
+                        placeholder="Category"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <textarea
+                        value={expenseForm.notes}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            notes: e.target.value,
+                          })
+                        }
+                        placeholder="Notes"
+                        rows={3}
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddExpense}
+                        disabled={isExpenseCreating}
+                        className="w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                      >
+                        {isExpenseCreating ? "Creating..." : "Add Expense"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="rounded-[1.5rem] border border-white/10 bg-[#09111d] p-5">
+                      <h3 className="mb-4 font-display text-xl text-white">
+                        Expense History
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="text-[var(--sand)] border-b border-white/10">
+                            <tr>
+                              {[
+                                "Title",
+                                "Amount",
+                                "Date",
+                                "Category",
+                                "Notes",
+                              ].map((col) => (
+                                <th
+                                  key={col}
+                                  className="px-4 py-3 font-medium whitespace-nowrap"
+                                >
+                                  {col}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {expenses.length > 0 ? (
+                              expenses.map((expense) => (
+                                <tr
+                                  key={expense.id}
+                                  onClick={() => openEditExpense(expense)}
+                                  className="border-b border-white/5 text-[var(--muted)] cursor-pointer hover:bg-white/4 transition"
+                                >
+                                  <td className="px-4 py-3 text-white whitespace-nowrap">
+                                    {expense.title}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    ${expense.amount}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    {new Date(
+                                      expense.date,
+                                    ).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-4 py-3 whitespace-nowrap">
+                                    {expense.category || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 max-w-[200px] truncate">
+                                    {expense.notes || "-"}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="p-8 text-center text-[var(--muted)]"
+                                >
+                                  No expenses recorded.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {editingExpense && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="w-full max-w-lg rounded-[1.5rem] border border-white/10 bg-[#0d1929] p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-display text-xl text-white">
+                          Edit Expense
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={closeEditExpense}
+                          className="rounded-full p-2 text-[var(--muted)] hover:text-white transition"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <input
+                        value={editExpenseForm.title}
+                        onChange={(e) =>
+                          setEditExpenseForm((c) => ({
+                            ...c,
+                            title: e.target.value,
+                          }))
+                        }
+                        placeholder="Title"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <input
+                          type="number"
+                          value={editExpenseForm.amount}
+                          onChange={(e) =>
+                            setEditExpenseForm((c) => ({
+                              ...c,
+                              amount: e.target.value,
+                            }))
+                          }
+                          placeholder="Amount"
+                          className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                        />
+                        <input
+                          type="date"
+                          value={editExpenseForm.date}
+                          onChange={(e) =>
+                            setEditExpenseForm((c) => ({
+                              ...c,
+                              date: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none focus:border-[var(--accent)]"
+                        />
+                      </div>
+
+                      <input
+                        value={editExpenseForm.category}
+                        onChange={(e) =>
+                          setEditExpenseForm((c) => ({
+                            ...c,
+                            category: e.target.value,
+                          }))
+                        }
+                        placeholder="Category"
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+
+                      <textarea
+                        value={editExpenseForm.notes}
+                        onChange={(e) =>
+                          setEditExpenseForm((c) => ({
+                            ...c,
+                            notes: e.target.value,
+                          }))
+                        }
+                        placeholder="Notes"
+                        rows={3}
+                        className="w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-[var(--accent)]"
+                      />
+
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={handleUpdateExpense}
+                          disabled={isExpenseUpdating}
+                          className="flex-1 rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f]"
+                        >
+                          {isExpenseUpdating ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExpense(editingExpense)}
+                          className="flex-1 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-rose-300 hover:bg-rose-500/20 transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
             ) : null}
           </div>

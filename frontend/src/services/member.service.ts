@@ -94,7 +94,7 @@ export const memberService = {
 
   getSessions: async () => {
     try {
-      const res = await fetch(`${server}/api/v1/members/sessions`, {
+      const res = await fetch(`${server}/api/v1/sessions`, {
         credentials: "include",
       });
       const data = await res.json();

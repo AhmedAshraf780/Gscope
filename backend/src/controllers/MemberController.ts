@@ -289,25 +289,25 @@ export const addSession = async (req: Request, res: Response) => {
 
 export const listSessions = async (req: Request, res: Response) => {
   try {
-    const { type } = req.body;
+    // const { type } = req.body;
     const gym_id = req.gym_id;
 
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "invalide gym id" });
     }
-    if (!type || typeof type !== "string") {
-      return res.status(400).json({ message: "session type is required" });
-    }
-    if (!["gym", "football", "swimming"].includes(type.toLowerCase())) {
-      return res.status(400).json({ message: "invalid session type" });
-    }
+    // if (!type || typeof type !== "string") {
+    // return res.status(400).json({ message: "session type is required" });
+    // }
+    // if (!["gym", "football", "swimming"].includes(type.toLowerCase())) {
+    //   return res.status(400).json({ message: "invalid session type" });
+    // }
 
     const gym = db.getCompanyById(Number(gym_id));
     if (!gym) {
       return res.status(400).json({ message: "Gym not found" });
     }
 
-    const sessions = await db.listSessions(type, Number(gym_id));
+    const sessions = await db.listSessions(Number(gym_id));
     return res.status(200).json(sessions);
   } catch (error) {
     console.log(error);

@@ -161,8 +161,7 @@ export class SqlDataStore implements Datastore {
     try {
       const now = new Date();
 
-      const formatDate = (date: Date) =>
-        `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 
       member.start_date = formatDate(now);
 
@@ -274,12 +273,11 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-  async listSessions(type: string, gym_id: number): Promise<Session[]> {
+  async listSessions(gym_id: number): Promise<Session[]> {
     try {
-      return await this.db.all(
-        `SELECT * FROM sessions WHERE session_type = ? AND gym_id = ?`,
-        [type, gym_id],
-      );
+      return await this.db.all(`SELECT * FROM sessions WHERE gym_id = ?`, [
+        gym_id,
+      ]);
     } catch (e) {
       console.log(e);
       return [];
@@ -376,7 +374,10 @@ export class SqlDataStore implements Datastore {
   ////////////////////////////////////////////////////////////////////////////////////////////
   // REPORTS
   ////////////////////////////////////////////////////////////////////////////////////////////
-  async getMembersbyday(gym_id: number, date: string): Promise<{ total: number, members: Member[] } | null> {
+  async getMembersbyday(
+    gym_id: number,
+    date: string,
+  ): Promise<{ total: number; members: Member[] } | null> {
     try {
       const row = await this.db.get(
         `SELECT * FROM members WHERE gym_id = ? AND start_date = ?`,
@@ -384,7 +385,7 @@ export class SqlDataStore implements Datastore {
       );
       return {
         total: row.length,
-        members: row
+        members: row,
       };
     } catch (error) {
       console.log(error);
@@ -395,7 +396,7 @@ export class SqlDataStore implements Datastore {
   async getMembersbymonth(
     gym_id: number,
     month: string,
-  ): Promise<{ total: number, members: Member[] } | null> {
+  ): Promise<{ total: number; members: Member[] } | null> {
     try {
       const row = await this.db.get(
         `SELECT * FROM members WHERE gym_id = ? AND strftime('%Y-%m', start_date) = ?`,
@@ -403,7 +404,7 @@ export class SqlDataStore implements Datastore {
       );
       return {
         total: row.length,
-        members: row
+        members: row,
       };
     } catch (error) {
       console.log(error);
@@ -432,8 +433,14 @@ export class SqlDataStore implements Datastore {
         [gym_id, month],
       );
 
-      const memberTotal = memberrow.reduce((sum: number, m: any) => sum + (m.price || 0), 0);
-      const sessionTotal = sessionrow.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+      const memberTotal = memberrow.reduce(
+        (sum: number, m: any) => sum + (m.price || 0),
+        0,
+      );
+      const sessionTotal = sessionrow.reduce(
+        (sum: number, s: any) => sum + (s.price || 0),
+        0,
+      );
 
       return {
         totalRevenue: memberTotal + sessionTotal,
@@ -442,7 +449,7 @@ export class SqlDataStore implements Datastore {
         membersCount: memberrow.length,
         sessionsCount: sessionrow.length,
         members: memberrow,
-        sessions: sessionrow
+        sessions: sessionrow,
       };
     } catch (error) {
       console.log(error);
@@ -450,7 +457,10 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-  async getRevenuebyday(gym_id: number, date: string): Promise<{
+  async getRevenuebyday(
+    gym_id: number,
+    date: string,
+  ): Promise<{
     totalRevenue: number;
     membersRevenue: number;
     sessionsRevenue: number;
@@ -469,8 +479,14 @@ export class SqlDataStore implements Datastore {
         [gym_id, date],
       );
 
-      const memberTotal = memberrow.reduce((sum: number, m: any) => sum + (m.price || 0), 0);
-      const sessionTotal = sessionrow.reduce((sum: number, s: any) => sum + (s.price || 0), 0);
+      const memberTotal = memberrow.reduce(
+        (sum: number, m: any) => sum + (m.price || 0),
+        0,
+      );
+      const sessionTotal = sessionrow.reduce(
+        (sum: number, s: any) => sum + (s.price || 0),
+        0,
+      );
 
       return {
         totalRevenue: memberTotal + sessionTotal,
@@ -479,7 +495,7 @@ export class SqlDataStore implements Datastore {
         membersCount: memberrow.length,
         sessionsCount: sessionrow.length,
         members: memberrow,
-        sessions: sessionrow
+        sessions: sessionrow,
       };
     } catch (error) {
       console.log(error);
@@ -487,8 +503,10 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
-  async getSessionsbyday(gym_id: number, date: string): Promise<{ total: number, sessions: Session[] } | null> {
+  async getSessionsbyday(
+    gym_id: number,
+    date: string,
+  ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
       const row = await this.db.get(
         `SELECT * FROM sessions WHERE gym_id = ? AND session_date = ?`,
@@ -496,7 +514,7 @@ export class SqlDataStore implements Datastore {
       );
       return {
         total: row.length,
-        sessions: row
+        sessions: row,
       };
     } catch (error) {
       console.log(error);
@@ -504,32 +522,30 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-  async getSessionsdayByType(gym_id: number, type: string, date: string)
-    : Promise<{ total: number, sessions: Session[] } | null> {
-
+  async getSessionsdayByType(
+    gym_id: number,
+    type: string,
+    date: string,
+  ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
-
       const row = await this.db.get(
         `SELECT * FROM sessions WHERE gym_id = ? AND session_type = ? AND session_date = ?`,
         [gym_id, type, date],
       );
       return {
         total: row.length,
-        sessions: row
+        sessions: row,
       };
-
-
     } catch (error) {
       console.log(error);
       return null;
     }
-
   }
 
   async getSessionsbymonth(
     gym_id: number,
     month: string,
-  ): Promise<{ total: number, sessions: Session[] } | null> {
+  ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
       const row = await this.db.get(
         `SELECT * FROM sessions WHERE gym_id = ? AND strftime('%Y-%m', session_date) = ?`,
@@ -537,7 +553,7 @@ export class SqlDataStore implements Datastore {
       );
       return {
         total: row.length,
-        sessions: row
+        sessions: row,
       };
     } catch (error) {
       console.log(error);
@@ -545,13 +561,11 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
-
   async getSessionsMonthByType(
     gym_id: number,
     type: string,
     month: string,
-  ): Promise<{ total: number, sessions: Session[] } | null> {
+  ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
       const row = await this.db.get(
         `SELECT * FROM sessions WHERE gym_id = ? AND session_type = ? AND strftime('%Y-%m', session_date) = ?`,
@@ -559,7 +573,7 @@ export class SqlDataStore implements Datastore {
       );
       return {
         total: row.length,
-        sessions: row
+        sessions: row,
       };
     } catch (error) {
       console.log(error);
@@ -567,12 +581,11 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
   async getTodaySessions(gym_id: number): Promise<number | null> {
     try {
-
-      const row = await this.db.get(`SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_date = DATE('now')`,
-        [gym_id]
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM sessions WHERE gym_id = ? AND session_date = DATE('now')`,
+        [gym_id],
       );
       return row?.total || 0;
     } catch (error) {
@@ -581,10 +594,8 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
   async getTodayRevenue(gym_id: number): Promise<number | null> {
     try {
-
       const memberrow = await this.db.get(
         `SELECT SUM(price) as total FROM members WHERE gym_id =? AND start_date = DATE('now')`,
         [gym_id],
@@ -596,13 +607,11 @@ export class SqlDataStore implements Datastore {
       const memberTotal = memberrow?.total || 0;
       const sessionTotal = sessionrow?.total || 0;
       return memberTotal + sessionTotal;
-
     } catch (error) {
       console.log(error);
       return null;
     }
   }
-
 
   async getmonthRevenue(gym_id: number): Promise<number | null> {
     try {
@@ -617,28 +626,24 @@ export class SqlDataStore implements Datastore {
       const memberTotal = memberrow?.total || 0;
       const sessionTotal = sessionrow?.total || 0;
       return memberTotal + sessionTotal;
-
-
     } catch (error) {
       console.log(error);
       return null;
     }
   }
 
-
   async getTodaymembers(gym_id: number): Promise<number | null> {
     try {
-
-      const row = await this.db.get(`SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND start_date = DATE('now')`,
-        [gym_id]
-      )
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND start_date = DATE('now')`,
+        [gym_id],
+      );
       return row?.total || 0;
     } catch (error) {
       console.log(error);
       return null;
     }
   }
-
 
   async getActiveMembers(gym_id: number): Promise<number | null> {
     try {
@@ -653,18 +658,9 @@ export class SqlDataStore implements Datastore {
     }
   }
 
-
-
-
-
-
-
-
   ////////////////////////////////////////////////////////////////////////////////////////////
   /////////////BANK
   ///////////////////////////////////////////////////////////////////////////////////////////
-
-
 
   async getBankMoney(gym_id: number): Promise<number> {
     try {
@@ -780,11 +776,10 @@ export class SqlDataStore implements Datastore {
    *
    *=======================================================================*/
 
-
   async createExpense(expense: Expense): Promise<number | null> {
     try {
       const result = await this.db.run(
-        `INSERT INTO expenses 
+        `INSERT INTO expenses
                 (title, amount, date, category, notes, created_at)
                 VALUES (?, ?, ?, ?, ?, datetime('now'))`,
         [
@@ -792,8 +787,8 @@ export class SqlDataStore implements Datastore {
           expense.amount,
           expense.date,
           expense.category,
-          expense.notes
-        ]
+          expense.notes,
+        ],
       );
       return result.lastID || null;
     } catch (e) {
@@ -813,10 +808,9 @@ export class SqlDataStore implements Datastore {
 
   async getExpenseById(id: number): Promise<Expense | null> {
     try {
-      const row = await this.db.get(
-        `SELECT * FROM expenses WHERE id = ?`,
-        [id]
-      );
+      const row = await this.db.get(`SELECT * FROM expenses WHERE id = ?`, [
+        id,
+      ]);
       return row || null;
     } catch (e) {
       console.log(e);
@@ -827,7 +821,7 @@ export class SqlDataStore implements Datastore {
   async updateExpense(expense: Expense): Promise<boolean> {
     try {
       const result = await this.db.run(
-        `UPDATE expenses 
+        `UPDATE expenses
                  SET title = ?, amount = ?, date = ?, category = ?, notes = ?
                  WHERE id = ?`,
         [
@@ -836,8 +830,8 @@ export class SqlDataStore implements Datastore {
           expense.date,
           expense.category,
           expense.notes,
-          expense.id
-        ]
+          expense.id,
+        ],
       );
       return (result?.changes ?? 0) > 0;
     } catch (e) {
@@ -848,10 +842,9 @@ export class SqlDataStore implements Datastore {
 
   async deleteExpense(id: number): Promise<boolean> {
     try {
-      const result = await this.db.run(
-        `DELETE FROM expenses WHERE id = ?`,
-        [id]
-      );
+      const result = await this.db.run(`DELETE FROM expenses WHERE id = ?`, [
+        id,
+      ]);
       return (result?.changes ?? 0) > 0;
     } catch (e) {
       console.log(e);
@@ -861,7 +854,7 @@ export class SqlDataStore implements Datastore {
   async getTotalExpenses(): Promise<number> {
     try {
       const row = await this.db.get(
-        `SELECT SUM(amount) as total FROM expenses`
+        `SELECT SUM(amount) as total FROM expenses`,
       );
       return row?.total || 0;
     } catch (e) {
@@ -873,9 +866,9 @@ export class SqlDataStore implements Datastore {
   async getExpensesByDateRange(start: string, end: string): Promise<Expense[]> {
     try {
       return await this.db.all(
-        `SELECT * FROM expenses 
+        `SELECT * FROM expenses
                  WHERE date BETWEEN ? AND ?`,
-        [start, end]
+        [start, end],
       );
     } catch (e) {
       console.log(e);
@@ -886,10 +879,10 @@ export class SqlDataStore implements Datastore {
   async getTotalByDateRange(start: string, end: string): Promise<number> {
     try {
       const row = await this.db.get(
-        `SELECT SUM(amount) as total 
-                 FROM expenses 
+        `SELECT SUM(amount) as total
+                 FROM expenses
                  WHERE date BETWEEN ? AND ?`,
-        [start, end]
+        [start, end],
       );
       return row?.total || 0;
     } catch (e) {
@@ -901,9 +894,9 @@ export class SqlDataStore implements Datastore {
   async getTotalByCategory(): Promise<{ category: string; total: number }[]> {
     try {
       return await this.db.all(
-        `SELECT category, SUM(amount) as total 
-                 FROM expenses 
-                 GROUP BY category`
+        `SELECT category, SUM(amount) as total
+                 FROM expenses
+                 GROUP BY category`,
       );
     } catch (e) {
       console.log(e);
@@ -911,4 +904,3 @@ export class SqlDataStore implements Datastore {
     }
   }
 }
-
