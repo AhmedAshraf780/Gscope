@@ -645,6 +645,45 @@ export class SqlDataStore implements Datastore {
     }
   }
 
+  async getmemberslogedtoday(gym_id: number): Promise<number | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM attendance_logs WHERE gym_id = ? AND DATE(check_in_time) = DATE('now')`,
+        [gym_id],
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async getMembersOfTheGym(gym_id: number): Promise<number | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM members WHERE gym_id = ?`,
+        [gym_id],
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
+  async getMembersExpiringSoon(gym_id: number): Promise<number | null> {
+    try {
+      const row = await this.db.get(
+        `SELECT COUNT(*) as total FROM members WHERE gym_id = ? AND end_date BETWEEN DATE('now') AND DATE('now','+4 days') `,
+        [gym_id],
+      );
+      return row?.total || 0;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  }
+
   async getActiveMembers(gym_id: number): Promise<number | null> {
     try {
       const row = await this.db.get(

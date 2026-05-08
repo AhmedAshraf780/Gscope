@@ -495,7 +495,59 @@ export const getTodaymembers = async (req: Request, res: Response) => {
     }
 }
 
+export const getmemberslogedtoday = async (req: Request, res: Response) => {
+    try {
+        const gym_id = req.gym_id;
+        if (!gym_id || isNaN(Number(gym_id))) {
+            return res.status(400).json({ message: "gym id is required" })
+        }
+        const gym = db.getCompanyById(Number(gym_id));
+        if (!gym) {
+            return res.status(400).json({ message: "Gym not found" });
+        }
+        const memberslogedtoday = await db.getmemberslogedtoday(Number(gym_id));
+        return res.status(200).json(memberslogedtoday);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
 
+export const getMembersOfTheGym = async (req: Request, res: Response) => {
+    try {
+        const gym_id = req.gym_id;
+        if (!gym_id || isNaN(Number(gym_id))) {
+            return res.status(400).json({ message: "gym id is required" })
+        }
+        const gym = db.getCompanyById(Number(gym_id));
+        if (!gym) {
+            return res.status(400).json({ message: "Gym not found" });
+        }
+        const MembersOfTheGym = await db.getMembersOfTheGym(Number(gym_id));
+        return res.status(200).json(MembersOfTheGym);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
+
+export const getMembersExpiringSoon = async (req: Request, res: Response) => {
+    try {
+        const gym_id = req.gym_id;
+        if (!gym_id || isNaN(Number(gym_id))) {
+            return res.status(400).json({ message: "gym id is required" })
+        }
+        const gym = db.getCompanyById(Number(gym_id));
+        if (!gym) {
+            return res.status(400).json({ message: "Gym not found" });
+        }
+        const membersExpiringSoon = await db.getMembersExpiringSoon(Number(gym_id));
+        return res.status(200).json(membersExpiringSoon);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+}
 
 export const getActiveMembers = async (req: Request, res: Response) => {
     try {

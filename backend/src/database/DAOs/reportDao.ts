@@ -31,6 +31,8 @@ export interface ReportDao {
     getTodayRevenue: (gym_id: number) => Promise<number | null>;
     getmonthRevenue: (gym_id: number) => Promise<number | null>;
     getTodaymembers: (gym_id: number) => Promise<number | null>;
-
+    getmemberslogedtoday: (gym_id: number) => Promise<number | null>;
     getActiveMembers: (gym_id: number) => Promise<number | null>;
+    getMembersOfTheGym: (gym_id: number) => Promise<number | null>;
+    getMembersExpiringSoon: (gym_id: number) => Promise<number | null>;
 }
