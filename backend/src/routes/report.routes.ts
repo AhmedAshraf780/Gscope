@@ -12,6 +12,77 @@ import { db } from "../database";
 
 const reportRouter = Router({ mergeParams: true });
 
+
+/**
+ * @swagger
+ * /api/v1/reports:
+ *   get:
+ *     summary: Get gym analytics report
+ *     description: Returns key analytics data for a specific gym.
+ *     tags:
+ *       - Reports
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the gym
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved analytics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 todayrevenue:
+ *                   type: number
+ *                   example: 1500
+ *                 mothrevenue:
+ *                   type: number
+ *                   example: 32000
+ *                 todaysessions:
+ *                   type: integer
+ *                   example: 25
+ *                 todayMembers:
+ *                   type: integer
+ *                   example: 5
+ *                 memberslogedtoday:
+ *                   type: integer
+ *                   example: 40
+ *                 membersOfTheGym:
+ *                   type: integer
+ *                   example: 200
+ *                 membersExpiringSoon:
+ *                   type: integer
+ *                   example: 12
+ *                 activeMembers:
+ *                   type: integer
+ *                   example: 180
+ *       401:
+ *         description: Gym not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Gym not found
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Internal server error
+ */
+
+
 reportRouter.get("/", async (req, res) => {
     const gym_id = req.gym_id;
     try {
@@ -71,12 +142,6 @@ reportRouter.get("/", async (req, res) => {
         res.status(500).json({ message: "Internal server error" });
     }
 });
-// reportRouter.get('/', getTodayMembers);
-// reportRouter.get('/', getMonthlyMembers);
-// reportRouter.get('/', getMonthlyRevenue);
-// reportRouter.get('/', getActiveMembers);
-// reportRouter.get('/', getTodaySessions);
-// reportRouter.get('/', getMonthlySessions);
-// reportRouter.get('/', getMonthlySessionsByType);
+
 
 export default reportRouter;

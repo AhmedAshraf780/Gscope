@@ -44,7 +44,7 @@ const memberRouter = Router({ mergeParams: true });
  *           ok: true
  *           member_id: 1234567890
  *     401:
- *       description: Invalid credentials, bad request, or user already exists
+ *       description: bad request, or user already exists
  */
 memberRouter.post("/", addMember);
 
@@ -73,7 +73,7 @@ memberRouter.post("/", addMember);
  *           message: "Member deleted successfully"
  *           ok: true
  *     401:
- *       description: Invalid credentials, bad request, or user not found
+ *       description:bad request, or user not found
  */
 memberRouter.delete("/:id", deleteMember);
 
@@ -113,7 +113,7 @@ memberRouter.delete("/:id", deleteMember);
  *           message: "Member updated successfully"
  *           ok: true
  *     401:
- *       description: Invalid credentials, bad request, or user not found
+ *       description:bad request, or user not found
  */
 memberRouter.put("/:id", updateMember);
 
@@ -143,7 +143,7 @@ memberRouter.put("/:id", updateMember);
  *           ok: true
  *           member: ["member1"]
  *     401:
- *       description: Invalid credentials, bad request, or user not found
+ *       description: bad request, or user not found
  */
 memberRouter.get("/:id", getMemberById);
 
@@ -173,7 +173,7 @@ memberRouter.get("/:id", getMemberById);
  *           ok: true
  *           members: ["member1"]
  *     401:
- *       description: Invalid credentials, bad request, or user not found
+ *       description: bad request, or user not found
  */
 memberRouter.get("/filter", getMemberByName);
 
@@ -197,7 +197,7 @@ memberRouter.get("/filter", getMemberByName);
  *           ok: true
  *           members: ["member1", "member2", "member3"]
  *     401:
- *       description: Invalid credentials, bad request, or no members found
+ *       description:bad request, or no members found
  */
 memberRouter.get("/", listMembersOfGym);
 
