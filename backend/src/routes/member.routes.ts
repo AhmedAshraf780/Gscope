@@ -73,7 +73,7 @@ memberRouter.post("/", addMember);
  *           message: "Member deleted successfully"
  *           ok: true
  *     401:
- *       description: Invalid credentials, bad request, or user already exists
+ *       description: Invalid credentials, bad request, or user not found
  */
 memberRouter.delete("/:id", deleteMember);
 
@@ -113,7 +113,7 @@ memberRouter.delete("/:id", deleteMember);
  *           message: "Member updated successfully"
  *           ok: true
  *     401:
- *       description: Invalid credentials, bad request, or user already exists
+ *       description: Invalid credentials, bad request, or user not found
  */
 memberRouter.put("/:id", updateMember);
 
@@ -141,9 +141,9 @@ memberRouter.put("/:id", updateMember);
  *         example:
  *           message: "Member found successfully"
  *           ok: true
- *           member_id: 1234567890
+ *           member: ["member1"]
  *     401:
- *       description: Invalid credentials, bad request, or user already exists
+ *       description: Invalid credentials, bad request, or user not found
  */
 memberRouter.get("/:id", getMemberById);
 
@@ -171,9 +171,9 @@ memberRouter.get("/:id", getMemberById);
  *         example:
  *           message: "Member found successfully"
  *           ok: true
- *           member_id: 1234567890
+ *           members: ["member1"]
  *     401:
- *       description: Invalid credentials, bad request, or user already exists
+ *       description: Invalid credentials, bad request, or user not found
  */
 memberRouter.get("/filter", getMemberByName);
 
@@ -195,9 +195,9 @@ memberRouter.get("/filter", getMemberByName);
  *         example:
  *           message: "Members listed successfully"
  *           ok: true
- *           member_id: 1234567890
+ *           members: ["member1", "member2", "member3"]
  *     401:
- *       description: Invalid credentials, bad request, or user already exists
+ *       description: Invalid credentials, bad request, or no members found
  */
 memberRouter.get("/", listMembersOfGym);
 
