@@ -62,24 +62,8 @@ const reportRouter = Router({ mergeParams: true });
  *                   example: 180
  *       401:
  *         description: Gym not found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Gym not found
  *       500:
  *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Internal server error
  */
 
 
