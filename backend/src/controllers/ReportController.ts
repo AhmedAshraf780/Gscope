@@ -4,7 +4,7 @@ import { db } from '../database';
 export const getMembersbyday = async (req: Request, res: Response) => {
     try {
         const gym_id = req.gym_id;
-        const { date } = req.body;
+        const { date } = req.query;
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
         }
@@ -56,7 +56,7 @@ export const getMembersbyday = async (req: Request, res: Response) => {
 export const getMembersbymonth = async (req: Request, res: Response) => {
     try {
         const gym_id = req.gym_id;
-        const { month } = req.body;
+        const { month } = req.query;
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
         }
@@ -101,7 +101,7 @@ export const getMembersbymonth = async (req: Request, res: Response) => {
 export const getRevenuebymonth = async (req: Request, res: Response) => {
     try {
         const gym_id = req.gym_id;
-        const { month } = req.body;
+        const { month } = req.query;
 
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
@@ -147,7 +147,7 @@ export const getRevenuebyday = async (req: Request, res: Response) => {
     try {
 
         const gym_id = req.gym_id;
-        const { date } = req.body;
+        const { date } = req.query;
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
         }
@@ -206,7 +206,7 @@ export const getRevenuebyday = async (req: Request, res: Response) => {
 export const getSessionsbyday = async (req: Request, res: Response) => {
     try {
         const gym_id = req.gym_id;
-        const { date } = req.body;
+        const { date } = req.query;
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
         }
@@ -261,7 +261,7 @@ export const getSessionsdayByType = async (req: Request, res: Response) => {
     try {
 
         const gym_id = req.gym_id;
-        const { date, session_type } = req.body;
+        const { date, session_type } = req.query;
 
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
@@ -323,7 +323,7 @@ export const getSessionsbymonth = async (req: Request, res: Response) => {
     try {
 
         const gym_id = req.gym_id;
-        const { month } = req.body;
+        const { month } = req.query;
 
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })
@@ -367,7 +367,7 @@ export const getSessionsbymonth = async (req: Request, res: Response) => {
 export const getSessionsMonthByType = async (req: Request, res: Response) => {
     try {
         const gym_id = req.gym_id;
-        const { month, session_type } = req.body;
+        const { month, session_type } = req.query;
 
         if (!gym_id || isNaN(Number(gym_id))) {
             return res.status(400).json({ message: "gym id is required" })

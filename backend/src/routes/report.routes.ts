@@ -1,16 +1,176 @@
 import { Router } from "express";
-// import {
-//   getTodayMembers,
-//   getMonthlyMembers,
-//   getMonthlyRevenue,
-//   getActiveMembers,
-//   getTodaySessions,
-//   getMonthlySessions,
-//   getMonthlySessionsByType,
-// } from "../controllers/ReportController";
+import {
+    getMembersbyday,
+    getMembersbymonth,
+    getRevenuebymonth,
+    getRevenuebyday,
+    getSessionsbyday,
+    getSessionsdayByType,
+    getSessionsbymonth,
+    getSessionsMonthByType,
+} from "../controllers/ReportController";
 import { db } from "../database";
 
 const reportRouter = Router({ mergeParams: true });
+
+/**
+ * @swagger
+ * /reports/members/day:
+ *   get:
+ *     summary: Get members by specific day
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05-15
+ *     responses:
+ *       200:
+ *         description: Members retrieved successfully
+ *       400:
+ *         description: Invalid input
+ */
+reportRouter.get("/day", getMembersbyday);
+/**
+ * @swagger
+ * /reports/members/month:
+ *   get:
+ *     summary: Get members by month
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05
+ *     responses:
+ *       200:
+ *         description: Monthly members retrieved
+ */
+reportRouter.get("/month", getMembersbymonth);
+/**
+ * @swagger
+ * /reports/revenue/month:
+ *   get:
+ *     summary: Get revenue by month
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05
+ *     responses:
+ *       200:
+ *         description: Monthly revenue retrieved
+ */
+reportRouter.get("/month", getRevenuebymonth);
+/**
+ * @swagger
+ * /reports/revenue/day:
+ *   get:
+ *     summary: Get revenue by day
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05-15
+ *     responses:
+ *       200:
+ *         description: Daily revenue retrieved
+ */
+reportRouter.get("/day", getRevenuebyday);
+/**
+ * @swagger
+ * /reports/sessions/day:
+ *   get:
+ *     summary: Get sessions by day
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05-15
+ *     responses:
+ *       200:
+ *         description: Sessions retrieved
+ */
+reportRouter.get("/day", getSessionsbyday);
+/**
+ * @swagger
+ * /reports/sessions/day/type:
+ *   get:
+ *     summary: Get sessions by day and type
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05-15
+ *       - in: query
+ *         name: session_type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [gym, football, else]
+ *     responses:
+ *       200:
+ *         description: Sessions by type retrieved
+ */
+reportRouter.get("/sessions/day/type", getSessionsdayByType);
+/**
+ * @swagger
+ * /reports/sessions/month:
+ *   get:
+ *     summary: Get sessions by month
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05
+ *     responses:
+ *       200:
+ *         description: Monthly sessions retrieved
+ */
+reportRouter.get("/month", getSessionsbymonth);
+/**
+ * @swagger
+ * /reports/sessions/month/type:
+ *   get:
+ *     summary: Get sessions by month and type
+ *     tags: [Reports]
+ *     parameters:
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 2026-05
+ *       - in: query
+ *         name: session_type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [gym, football, else]
+ *     responses:
+ *       200:
+ *         description: Monthly sessions by type retrieved
+ */
+reportRouter.get("/sessions/month/type", getSessionsMonthByType);
 
 
 /**

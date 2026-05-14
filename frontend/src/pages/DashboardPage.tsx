@@ -20,6 +20,7 @@ import { BankPane } from "../components/dashboard/BankPane";
 import { OffersPane } from "../components/dashboard/OffersPane";
 import { ExpensesPane } from "../components/dashboard/ExpensesPane";
 
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const { auth, logout } = useAuth();
@@ -150,6 +151,9 @@ export function DashboardPage() {
         todaysessions: (data as any).todaysessions ?? 0,
         todayMembers: (data as any).todayMembers ?? 0,
         activeMembers: (data as any).activeMembers ?? 0,
+        memberslogedtoday: (data as any).memberslogedtoday ?? 0,
+        membersOfTheGym: (data as any).membersOfTheGym ?? 0,
+        membersExpiringSoon: (data as any).membersExpiringSoon ?? 0,
       });
     }
   }, []);
@@ -157,6 +161,7 @@ export function DashboardPage() {
   const handleLogout = () => {
     logout();
     navigate("/signin", { replace: true });
+
   };
 
   useEffect(() => {
@@ -205,7 +210,7 @@ export function DashboardPage() {
                 Manage subscriptions, profiles, logs, and analytics with the same system your front desk and staff rely on every day.
               </p>
               {analysis && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Today Revenue</p>
                     <p className="mt-2 font-display text-xl text-emerald-400">${analysis.todayrevenue}</p>
@@ -225,6 +230,18 @@ export function DashboardPage() {
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Active Members</p>
                     <p className="mt-2 font-display text-xl text-emerald-400">{analysis.activeMembers}</p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Members Logged Today</p>
+                    <p className="mt-2 font-display text-xl text-white">{analysis.memberslogedtoday}</p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Total Gym Members</p>
+                    <p className="mt-2 font-display text-xl text-white">{analysis.membersOfTheGym}</p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Expiring Soon</p>
+                    <p className="mt-2 font-display text-xl text-amber-400">{analysis.membersExpiringSoon}</p>
                   </article>
                 </div>
               )}

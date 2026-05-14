@@ -502,6 +502,11 @@ authRouter.post("/resendotp", async (req, res) => {
     console.log(err);
     return res.status(500).json({ message: "Error resending OTP" });
   }
+
+
 });
 
+
 export default authRouter;
+
+

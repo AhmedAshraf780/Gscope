@@ -1,116 +1,173 @@
+import { useEffect, useState } from "react";
+import { analysisService } from "../../services/analysis.service";
+
 export function AnalyticsPane() {
+  const [activeTab, setActiveTab] = useState<"month" | "day">("month");
+  
+  const [monthInput, setMonthInput] = useState(() => new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [monthSessionType, setMonthSessionType] = useState("");
+  
+  const [dayInput, setDayInput] = useState(() => new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
+  const [daySessionType, setDaySessionType] = useState("");
+
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        if (activeTab === "month") {
+          if (monthInput.length === 7) {
+            const res = await analysisService.getAdvancedMonthAnalysis(monthInput, monthSessionType);
+            setData(res);
+          }
+        } else {
+          if (dayInput.length === 10) {
+            const res = await analysisService.getAdvancedDayAnalysis(dayInput, daySessionType);
+            setData(res);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, [activeTab, monthInput, monthSessionType, dayInput, daySessionType]);
+
   return (
     <section className="space-y-6">
       <div>
         <p className="text-sm uppercase tracking-[0.22em] text-[var(--sand)]">
-          Analytics pane
+          Advanced Analytics
         </p>
         <h2 className="mt-3 font-display text-3xl text-white">
-          Revenue, retention, and traffic at a glance.
+          Deep dive into your gym's performance.
         </h2>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm text-[var(--muted)]">
-                Monthly revenue trend
-              </p>
-              <p className="mt-2 font-display text-3xl text-white">
-                $18.4k current
-              </p>
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+        {/* LEFT SIDE: CARDS */}
+        <div className="grid gap-5 sm:grid-cols-3 xl:grid-cols-1 content-start">
+          <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6 transition hover:border-white/20">
+            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Total Revenue</p>
+            <p className="mt-3 font-display text-4xl text-emerald-400">
+              ${data?.revenue?.totalRevenue ?? 0}
+            </p>
+            <div className="mt-4 flex gap-4 text-xs text-[var(--muted)]">
+              <span>Members: ${data?.revenue?.membersRevenue ?? 0}</span>
+              <span>Sessions: ${data?.revenue?.sessionsRevenue ?? 0}</span>
             </div>
-            <span className="rounded-full bg-emerald-400/14 px-3 py-1 text-xs text-emerald-200">
-              +9.2%
-            </span>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6 transition hover:border-white/20">
+            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Total Members</p>
+            <p className="mt-3 font-display text-4xl text-white">
+              {data?.members?.total ?? 0}
+            </p>
+          </article>
+
+          <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6 transition hover:border-white/20">
+            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Total Sessions</p>
+            <p className="mt-3 font-display text-4xl text-white">
+              {data?.sessions?.total ?? 0}
+            </p>
+            {activeTab === "month" && monthSessionType && (
+              <p className="mt-2 text-xs text-[var(--muted)]">Type: {monthSessionType}</p>
+            )}
+            {activeTab === "day" && daySessionType && (
+              <p className="mt-2 text-xs text-[var(--muted)]">Type: {daySessionType}</p>
+            )}
+          </article>
+        </div>
+
+        {/* RIGHT SIDE: CONTROLS */}
+        <div className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur-md self-start">
+          <div className="flex gap-2 rounded-full border border-white/10 bg-[#09111d] p-1">
+            <button
+              onClick={() => setActiveTab("month")}
+              className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                activeTab === "month"
+                  ? "bg-[var(--accent)] text-[#08111f] shadow-[0_0_15px_rgba(255,212,102,0.3)]"
+                  : "text-[var(--muted)] hover:text-white"
+              }`}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setActiveTab("day")}
+              className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                activeTab === "day"
+                  ? "bg-[var(--accent)] text-[#08111f] shadow-[0_0_15px_rgba(255,212,102,0.3)]"
+                  : "text-[var(--muted)] hover:text-white"
+              }`}
+            >
+              Day
+            </button>
           </div>
-          <div className="mt-8 flex h-56 items-end gap-3">
-            {[
-              "36%",
-              "42%",
-              "48%",
-              "55%",
-              "62%",
-              "73%",
-              "88%",
-              "81%",
-            ].map((height, index) => (
-              <div
-                key={index}
-                className="flex flex-1 flex-col items-center gap-3"
-              >
-                <div
-                  className="w-full rounded-t-[1rem] bg-[linear-gradient(180deg,rgba(255,212,102,0.95),rgba(55,114,255,0.5))]"
-                  style={{ height }}
-                />
-                <span className="text-xs text-[var(--muted)]">
-                  {
-                    [
-                      "Sep",
-                      "Oct",
-                      "Nov",
-                      "Dec",
-                      "Jan",
-                      "Feb",
-                      "Mar",
-                      "Apr",
-                    ][index]
-                  }
-                </span>
+
+          <div className="mt-8 space-y-5">
+            {activeTab === "month" ? (
+              <>
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Select Month</span>
+                  <input
+                    type="month"
+                    value={monthInput}
+                    onChange={(e) => setMonthInput(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition focus:border-[var(--accent)]"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Session Type</span>
+                  <select
+                    value={monthSessionType}
+                    onChange={(e) => setMonthSessionType(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition focus:border-[var(--accent)]"
+                  >
+                    <option value="">All Types</option>
+                    <option value="gym">Gym</option>
+                    <option value="football">Football</option>
+                    <option value="else">Else</option>
+                  </select>
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Select Date</span>
+                  <input
+                    type="date"
+                    value={dayInput}
+                    onChange={(e) => setDayInput(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition focus:border-[var(--accent)]"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Session Type</span>
+                  <select
+                    value={daySessionType}
+                    onChange={(e) => setDaySessionType(e.target.value)}
+                    className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition focus:border-[var(--accent)]"
+                  >
+                    <option value="">All Types</option>
+                    <option value="gym">Gym</option>
+                    <option value="football">Football</option>
+                    <option value="else">Else</option>
+                  </select>
+                </label>
+              </>
+            )}
+
+            {loading && (
+              <div className="flex justify-center py-4">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-[var(--accent)]"></span>
               </div>
-            ))}
+            )}
           </div>
-        </article>
-
-        <div className="grid gap-5">
-          <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-            <p className="text-sm text-[var(--muted)]">
-              Membership mix
-            </p>
-            <div className="mt-5 space-y-4">
-              {[
-                ["Monthly", "54%"],
-                ["Session Packs", "28%"],
-                ["Quarterly / Annual", "18%"],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-white">{label}</span>
-                    <span className="text-[var(--muted)]">
-                      {value}
-                    </span>
-                  </div>
-                  <div className="mt-2 rounded-full bg-white/8 p-1">
-                    <div
-                      className="h-2 rounded-full bg-[var(--accent)]"
-                      style={{ width: value as string }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-5">
-            <p className="text-sm text-[var(--muted)]">
-              Operational notes
-            </p>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-[var(--muted)]">
-              <p>
-                Peak occupancy is holding between 6 PM and 8 PM on
-                weekdays.
-              </p>
-              <p>
-                Boxing packages are converting better than standard
-                session packs.
-              </p>
-              <p>
-                Expired memberships need follow-up before the next
-                billing cycle.
-              </p>
-            </div>
-          </article>
         </div>
       </div>
     </section>
