@@ -103,9 +103,13 @@ app.use("/api/v1/expenses", authMiddleware, expensesRouter);
 app.post("/api/v1/sessions", authMiddleware, addSession);
 app.get("/api/v1/sessions", authMiddleware, listSessions);
 
-// start server
-app.listen(config.port, async () => {
-  await initDB(__dirname + "/database/database.db");
-  await connectRedis();
-  console.log(`Server running on http://localhost:${config.port}`);
-});
+export default app;
+
+if (process.env.NODE_ENV !== "test") {
+  // start server
+  app.listen(config.port, async () => {
+    await initDB(__dirname + "/database/database.db");
+    await connectRedis();
+    console.log(`Server running on http://localhost:${config.port}`);
+  });
+}

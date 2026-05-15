@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.ts",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --runInBand --detectOpenHandles --forceExit",
     "format": "prettier --write ."
   },
   "keywords": [],
@@ -45,6 +45,11 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "socraticode": "^1.7.2"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.0",
+    "jest": "^30.4.2",
+    "socraticode": "^1.7.2",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.9"
   }
 }
