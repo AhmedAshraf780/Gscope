@@ -379,7 +379,7 @@ export class SqlDataStore implements Datastore {
     date: string,
   ): Promise<{ total: number; members: Member[] } | null> {
     try {
-      const row = await this.db.get(
+      const row = await this.db.all(
         `SELECT * FROM members WHERE gym_id = ? AND start_date = ?`,
         [gym_id, date],
       );
@@ -398,7 +398,7 @@ export class SqlDataStore implements Datastore {
     month: string,
   ): Promise<{ total: number; members: Member[] } | null> {
     try {
-      const row = await this.db.get(
+      const row = await this.db.all(
         `SELECT * FROM members WHERE gym_id = ? AND strftime('%Y-%m', start_date) = ?`,
         [gym_id, month],
       );
@@ -424,11 +424,11 @@ export class SqlDataStore implements Datastore {
     sessions: Session[];
   } | null> {
     try {
-      const memberrow = await this.db.get(
+      const memberrow = await this.db.all(
         `SELECT * FROM members WHERE gym_id =? AND strftime('%Y-%m', start_date) = ?`,
         [gym_id, month],
       );
-      const sessionrow = await this.db.get(
+      const sessionrow = await this.db.all(
         `SELECT * FROM sessions WHERE gym_id =? AND strftime('%Y-%m', session_date) = ?`,
         [gym_id, month],
       );
@@ -470,11 +470,11 @@ export class SqlDataStore implements Datastore {
     sessions: Session[];
   } | null> {
     try {
-      const memberrow = await this.db.get(
+      const memberrow = await this.db.all(
         `SELECT * FROM members WHERE gym_id =? AND start_date = ?`,
         [gym_id, date],
       );
-      const sessionrow = await this.db.get(
+      const sessionrow = await this.db.all(
         `SELECT * FROM sessions WHERE gym_id =? AND session_date = ?`,
         [gym_id, date],
       );
@@ -508,7 +508,7 @@ export class SqlDataStore implements Datastore {
     date: string,
   ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
-      const row = await this.db.get(
+      const row = await this.db.all(
         `SELECT * FROM sessions WHERE gym_id = ? AND session_date = ?`,
         [gym_id, date],
       );
@@ -528,7 +528,7 @@ export class SqlDataStore implements Datastore {
     date: string,
   ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
-      const row = await this.db.get(
+      const row = await this.db.all(
         `SELECT * FROM sessions WHERE gym_id = ? AND session_type = ? AND session_date = ?`,
         [gym_id, type, date],
       );
@@ -547,7 +547,7 @@ export class SqlDataStore implements Datastore {
     month: string,
   ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
-      const row = await this.db.get(
+      const row = await this.db.all(
         `SELECT * FROM sessions WHERE gym_id = ? AND strftime('%Y-%m', session_date) = ?`,
         [gym_id, month],
       );
@@ -567,7 +567,7 @@ export class SqlDataStore implements Datastore {
     month: string,
   ): Promise<{ total: number; sessions: Session[] } | null> {
     try {
-      const row = await this.db.get(
+      const row = await this.db.all(
         `SELECT * FROM sessions WHERE gym_id = ? AND session_type = ? AND strftime('%Y-%m', session_date) = ?`,
         [gym_id, type, month],
       );
