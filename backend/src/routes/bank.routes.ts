@@ -5,28 +5,33 @@ const bankRouter = Router({ mergeParams: true });
 /**
  * @swagger
  * /api/v1/bank:
- * get:
- * summary: Get bank money
- * description: Get bank money
- * parameters:
- * - name: gym_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Successfully retrieved bank money
- *     content:
- *       application/json:
+ *   get:
+ *     tags: [Bank]
+ *     summary: Get bank money
+ *     description: Get the current bank money balance for the gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: object
- *           properties:
- *             money:
- *               type: number
- *               example: 1000
- *   401:
- *     description: Gym not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved bank money
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 money:
+ *                   type: number
+ *                   example: 1000
+ *       400:
+ *         description: Gym ID is required
+ *       404:
+ *         description: Gym not found
+ *       500:
+ *         description: Internal server error
  */
 bankRouter.get("/", async (req: Request, res: Response) => {
   const gym_id = req.gym_id;

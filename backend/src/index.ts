@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 dotenv.config();
 import config from "./config/config";
+import limiter from "express-rate-limit";
 import { initDB } from "./database";
 import { swaggerSpec } from "./config/swagger";
 import memberRouter from "./routes/member.routes";
@@ -43,6 +44,12 @@ app.use(
   }),
 );
 
+app.use(
+  limiter({
+    max: 100,
+    windowMs: 15 * 60 * 1000,
+  }),
+);
 // middleware (to read JSON)
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

@@ -1,6 +1,33 @@
 import { Request, Response } from "express";
 import { db } from "../database";
 
+/**
+ * @swagger
+ * /api/v1/reports/members/day:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get members by day
+ *     description: Get the count of members who joined on a specific date
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Members count for the day
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getMembersbyday = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -57,6 +84,33 @@ export const getMembersbyday = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/members/month:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get members by month
+ *     description: Get the count of members who joined in a specific month
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "2026-05"
+ *     responses:
+ *       200:
+ *         description: Members count for the month
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getMembersbymonth = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -102,6 +156,33 @@ export const getMembersbymonth = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/revenue/month:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get revenue by month
+ *     description: Get total revenue for a specific month
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "2026-05"
+ *     responses:
+ *       200:
+ *         description: Monthly revenue
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getRevenuebymonth = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -148,6 +229,33 @@ export const getRevenuebymonth = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/revenue/day:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get revenue by day
+ *     description: Get total revenue for a specific day
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Daily revenue
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getRevenuebyday = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -206,6 +314,33 @@ export const getRevenuebyday = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/sessions/day:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get sessions by day
+ *     description: Get the count of sessions for a specific day
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Sessions count for the day
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getSessionsbyday = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -263,6 +398,39 @@ export const getSessionsbyday = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/sessions/day/type:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get sessions by day and type
+ *     description: Get session count for a specific day filtered by session type
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: session_type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [gym, football, else]
+ *     responses:
+ *       200:
+ *         description: Sessions by type for the day
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getSessionsdayByType = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -330,6 +498,33 @@ export const getSessionsdayByType = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/sessions/month:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get sessions by month
+ *     description: Get total sessions for a specific month
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "2026-05"
+ *     responses:
+ *       200:
+ *         description: Monthly sessions count
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getSessionsbymonth = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -376,6 +571,39 @@ export const getSessionsbymonth = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/sessions/month/type:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get sessions by month and type
+ *     description: Get total sessions for a specific month filtered by session type
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "2026-05"
+ *       - in: query
+ *         name: session_type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [gym, football, else]
+ *     responses:
+ *       200:
+ *         description: Monthly sessions by type
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
+ */
 export const getSessionsMonthByType = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -433,6 +661,27 @@ export const getSessionsMonthByType = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/today/sessions:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get today's sessions count
+ *     description: Get the number of sessions for today
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Today's sessions count
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getTodaySessions = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -452,6 +701,27 @@ export const getTodaySessions = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/today/revenue:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get today's revenue
+ *     description: Get total revenue for today
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Today's revenue
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getTodayRevenue = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -471,6 +741,27 @@ export const getTodayRevenue = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/month/revenue:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get month revenue
+ *     description: Get total revenue for the current month
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Month revenue
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getmonthRevenue = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -490,6 +781,27 @@ export const getmonthRevenue = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/today/members:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get today's members count
+ *     description: Get the number of members who joined today
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Today's members count
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getTodaymembers = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -509,6 +821,27 @@ export const getTodaymembers = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/today/logged-members:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get members logged today
+ *     description: Get the count of members who checked in today
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Members logged today count
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getmemberslogedtoday = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -528,6 +861,27 @@ export const getmemberslogedtoday = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/members/total:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get total members in the gym
+ *     description: Get the total number of members in the gym
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Total members count
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getMembersOfTheGym = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -547,6 +901,27 @@ export const getMembersOfTheGym = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/members/expiring-soon:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get members expiring soon
+ *     description: Get the count of members whose subscriptions are expiring soon
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Members expiring soon count
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getMembersExpiringSoon = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
@@ -566,6 +941,27 @@ export const getMembersExpiringSoon = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/reports/members/active:
+ *   get:
+ *     tags: [Reports]
+ *     summary: Get active members
+ *     description: Get the count of currently active members
+ *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Active members count
+ *       400:
+ *         description: Invalid gym ID
+ *       500:
+ *         description: Internal server error
+ */
 export const getActiveMembers = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;

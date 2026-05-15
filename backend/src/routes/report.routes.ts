@@ -15,31 +15,46 @@ const reportRouter = Router({ mergeParams: true });
 
 /**
  * @swagger
- * /reports/members/day:
+ * /api/v1/reports/members/day:
  *   get:
- *     summary: Get members by specific day
  *     tags: [Reports]
+ *     summary: Get members by specific day
+ *     description: Retrieve members who joined on a specific date
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: date
  *         required: true
  *         schema:
  *           type: string
+ *           format: date
  *           example: 2026-05-15
  *     responses:
  *       200:
  *         description: Members retrieved successfully
  *       400:
  *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
-reportRouter.get("/day", getMembersbyday);
+reportRouter.get("/members/day", getMembersbyday);
 /**
  * @swagger
- * /reports/members/month:
+ * /api/v1/reports/members/month:
  *   get:
- *     summary: Get members by month
  *     tags: [Reports]
+ *     summary: Get members by month
+ *     description: Retrieve members who joined in a specific month
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: month
  *         required: true
@@ -49,15 +64,25 @@ reportRouter.get("/day", getMembersbyday);
  *     responses:
  *       200:
  *         description: Monthly members retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
-reportRouter.get("/month", getMembersbymonth);
+reportRouter.get("/members/month", getMembersbymonth);
 /**
  * @swagger
- * /reports/revenue/month:
+ * /api/v1/reports/revenue/month:
  *   get:
- *     summary: Get revenue by month
  *     tags: [Reports]
+ *     summary: Get revenue by month
+ *     description: Retrieve total revenue for a specific month
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: month
  *         required: true
@@ -67,56 +92,89 @@ reportRouter.get("/month", getMembersbymonth);
  *     responses:
  *       200:
  *         description: Monthly revenue retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
-reportRouter.get("/month", getRevenuebymonth);
+reportRouter.get("/revenue/month", getRevenuebymonth);
 /**
  * @swagger
- * /reports/revenue/day:
+ * /api/v1/reports/revenue/day:
  *   get:
- *     summary: Get revenue by day
  *     tags: [Reports]
+ *     summary: Get revenue by day
+ *     description: Retrieve total revenue for a specific day
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: date
  *         required: true
  *         schema:
  *           type: string
+ *           format: date
  *           example: 2026-05-15
  *     responses:
  *       200:
  *         description: Daily revenue retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
-reportRouter.get("/day", getRevenuebyday);
+reportRouter.get("/revenue/day", getRevenuebyday);
 /**
  * @swagger
- * /reports/sessions/day:
+ * /api/v1/reports/sessions/day:
  *   get:
- *     summary: Get sessions by day
  *     tags: [Reports]
+ *     summary: Get sessions by day
+ *     description: Retrieve session count for a specific day
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: date
  *         required: true
  *         schema:
  *           type: string
+ *           format: date
  *           example: 2026-05-15
  *     responses:
  *       200:
  *         description: Sessions retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
-reportRouter.get("/day", getSessionsbyday);
+reportRouter.get("/sessions/day", getSessionsbyday);
 /**
  * @swagger
- * /reports/sessions/day/type:
+ * /api/v1/reports/sessions/day/type:
  *   get:
- *     summary: Get sessions by day and type
  *     tags: [Reports]
+ *     summary: Get sessions by day and type
+ *     description: Retrieve session count for a specific day filtered by session type
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: date
  *         required: true
  *         schema:
  *           type: string
+ *           format: date
  *           example: 2026-05-15
  *       - in: query
  *         name: session_type
@@ -127,15 +185,25 @@ reportRouter.get("/day", getSessionsbyday);
  *     responses:
  *       200:
  *         description: Sessions by type retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
 reportRouter.get("/sessions/day/type", getSessionsdayByType);
 /**
  * @swagger
- * /reports/sessions/month:
+ * /api/v1/reports/sessions/month:
  *   get:
- *     summary: Get sessions by month
  *     tags: [Reports]
+ *     summary: Get sessions by month
+ *     description: Retrieve total sessions for a specific month
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: month
  *         required: true
@@ -145,15 +213,25 @@ reportRouter.get("/sessions/day/type", getSessionsdayByType);
  *     responses:
  *       200:
  *         description: Monthly sessions retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
-reportRouter.get("/month", getSessionsbymonth);
+reportRouter.get("/sessions/month", getSessionsbymonth);
 /**
  * @swagger
- * /reports/sessions/month/type:
+ * /api/v1/reports/sessions/month/type:
  *   get:
- *     summary: Get sessions by month and type
  *     tags: [Reports]
+ *     summary: Get sessions by month and type
+ *     description: Retrieve total sessions for a specific month filtered by session type
  *     parameters:
+ *       - in: header
+ *         name: gym_id
+ *         required: true
+ *         schema:
+ *           type: integer
  *       - in: query
  *         name: month
  *         required: true
@@ -169,6 +247,10 @@ reportRouter.get("/month", getSessionsbymonth);
  *     responses:
  *       200:
  *         description: Monthly sessions by type retrieved
+ *       400:
+ *         description: Invalid input
+ *       500:
+ *         description: Internal server error
  */
 reportRouter.get("/sessions/month/type", getSessionsMonthByType);
 
@@ -177,17 +259,15 @@ reportRouter.get("/sessions/month/type", getSessionsMonthByType);
  * @swagger
  * /api/v1/reports:
  *   get:
+ *     tags: [Reports]
  *     summary: Get gym analytics report
- *     description: Returns key analytics data for a specific gym.
- *     tags:
- *       - Reports
+ *     description: Returns key analytics data for a specific gym
  *     parameters:
  *       - in: header
  *         name: gym_id
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID of the gym
  *     responses:
  *       200:
  *         description: Successfully retrieved analytics
@@ -220,7 +300,9 @@ reportRouter.get("/sessions/month/type", getSessionsMonthByType);
  *                 activeMembers:
  *                   type: integer
  *                   example: 180
- *       401:
+ *       400:
+ *         description: Gym ID is required
+ *       404:
  *         description: Gym not found
  *       500:
  *         description: Internal server error
@@ -240,20 +322,6 @@ reportRouter.get("/", async (req, res) => {
       return res.status(404).json({ message: "Gym not found" });
     }
 
-    // // get bunch of analytics
-    // const Membersbyday = await db.getMembersbyday(gym_id, "");
-    // const Membersbymonth = await db.getMembersbymonth(gym_id, "");
-    // const Revenuebymonth = await db.getRevenuebymonth(gym_id, "");
-    // const revenuebyday = await db.getRevenuebyday(gym_id, "")
-    // const Sessionsbyday = await db.getSessionsbyday(gym_id, "");
-    // const daySessionByType = await db.getSessionsdayByType(gym_id, "", "");
-    // const monthlySessions = await db.getSessionsbymonth(gym_id, "");
-    // const monthlySessionsByType = await db.getSessionsMonthByType(
-    //     gym_id,
-    //     "",
-    //     "",
-    // );
-
     const todayrevenue = await db.getTodayRevenue(gym_id);
     const mothrevenue = await db.getmonthRevenue(gym_id);
     const todaysessions = await db.getTodaySessions(gym_id);
@@ -264,14 +332,6 @@ reportRouter.get("/", async (req, res) => {
     const activeMembers = await db.getActiveMembers(gym_id);
 
     const analytics = {
-      // Membersbyday,
-      // Membersbymonth,
-      // Revenuebymonth,
-      // revenuebyday,
-      // Sessionsbyday,
-      // daySessionByType,
-      // monthlySessions,
-      // monthlySessionsByType,
       todayrevenue,
       mothrevenue,
       todaysessions,

@@ -6,26 +6,31 @@ const offerRouter = Router({ mergeParams: true });
 /**
  * @swagger
  * /api/v1/offers:
- * get:
- * summary: Get all offers
- * description: Get all offers for a specific gym
- * parameters:
- * - name: gym_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Successfully retrieved offers
- *     content:
- *       application/json:
+ *   get:
+ *     tags: [Offers]
+ *     summary: Get all offers
+ *     description: Get all offers for a specific gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/Offer'
- *   401:
- *     description: Gym not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved offers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Offer'
+ *       400:
+ *         description: Gym ID is required
+ *       404:
+ *         description: Gym not found
+ *       500:
+ *         description: Internal server error
  */
 offerRouter.get("/", async (req: Request, res: Response) => {
   const gym_id = req.gym_id;
@@ -52,51 +57,60 @@ offerRouter.get("/", async (req: Request, res: Response) => {
 /**
  * @swagger
  * /api/v1/offers:
- * post:
- * summary: Add a new offer
- * description: Add a new offer for a specific gym
- * parameters:
- * - name: gym_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * requestBody:
- *   required: true
- *   content:
- *     application/json:
- *       schema:
- *         type: object
- *         properties:
- *           name:
- *             type: string
- *             example: "Summer Offer"
- *           months:
- *             type: integer
- *             example: 6
- *           price:
- *             type: number
- *             example: 500
- *           end_date:
- *             type: string
- *             format: date
- *             example: "2026-12-31"
- * responses:
- *   201:
- *     description: Offer added successfully
- *     content:
- *       application/json:
+ *   post:
+ *     tags: [Offers]
+ *     summary: Add a new offer
+ *     description: Add a new subscription offer for a specific gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: object
- *           properties:
- *             message:
- *               type: string
- *               example: "Offer added successfully"
- *             offerId:
- *               type: integer
- *               example: 1
- *   401:
- *     description: Gym not found
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - months
+ *               - price
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Summer Offer"
+ *               months:
+ *                 type: integer
+ *                 example: 6
+ *               price:
+ *                 type: number
+ *                 example: 500
+ *               end_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-12-31"
+ *     responses:
+ *       201:
+ *         description: Offer added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Offer added successfully"
+ *                 offerId:
+ *                   type: integer
+ *                   example: 1
+ *       400:
+ *         description: Gym ID is required
+ *       404:
+ *         description: Gym not found
+ *       500:
+ *         description: Internal server error
  */
 offerRouter.post("/", async (req: Request, res: Response) => {
   const gym_id = req.gym_id;
@@ -131,26 +145,31 @@ offerRouter.post("/", async (req: Request, res: Response) => {
 /**
  * @swagger
  * /api/v1/offers/available:
- * get:
- * summary: Get available offers
- * description: Get available offers for a specific gym
- * parameters:
- * - name: gym_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Successfully retrieved offers
- *     content:
- *       application/json:
+ *   get:
+ *     tags: [Offers]
+ *     summary: Get available offers
+ *     description: Get all currently available (not expired) offers for a specific gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/Offer'
- *   401:
- *     description: Gym not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved available offers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Offer'
+ *       400:
+ *         description: Gym ID is required
+ *       404:
+ *         description: Gym not found
+ *       500:
+ *         description: Internal server error
  */
 offerRouter.get("/available", async (req: Request, res: Response) => {
   const gym_id = req.gym_id;

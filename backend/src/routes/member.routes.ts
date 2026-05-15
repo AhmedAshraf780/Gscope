@@ -12,193 +12,228 @@ const memberRouter = Router({ mergeParams: true });
 /**
  * @swagger
  * /api/v1/members:
- * post:
- * summary: add new member
- * description: add new member to the gym
- * requestBody:
- *   required: true
- *   content:
- *     application/json:
- *       schema:
- *         type: object
- *         items:
- *           $ref: '#/components/schemas/Member'
- *         example:
- *           name: "John Doe"
- *           phone: "0111222333"
- *           months: 12
- *           price: 1200
- *           notes: ""
- *           offer_id: 12
- * responses:
- *   200:
- *     description: Member added successfully
- *     content:
- *       application/json:
+ *   post:
+ *     tags: [Members]
+ *     summary: Add a new member
+ *     description: Add a new member to the gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: object
- *           items:
- *             $ref: '#/components/schemas/Member'
- *         example:
- *           message: "Member added successfully"
- *           ok: true
- *           member_id: 1234567890
- *     401:
- *       description: bad request, or user already exists
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - phone
+ *               - months
+ *               - price
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               phone:
+ *                 type: string
+ *                 example: "0111222333"
+ *               months:
+ *                 type: integer
+ *                 example: 12
+ *               price:
+ *                 type: number
+ *                 example: 1200
+ *               notes:
+ *                 type: string
+ *                 example: "Prefers evening sessions"
+ *               offer_id:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       201:
+ *         description: Member added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Member added successfully"
+ *       400:
+ *         description: Bad request or gym not found
+ *       500:
+ *         description: Internal server error
  */
 memberRouter.post("/", addMember);
 
 /**
  * @swagger
- * /api/v1/members/{id}:
- * delete:
- * summary: delete member
- * description: delete member from the gym
- * parameters:
- * - name: id
- *   in: path
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Member deleted successfully
- *     content:
- *       application/json:
+ * /api/v1/members:
+ *   get:
+ *     tags: [Members]
+ *     summary: List all members of the gym
+ *     description: Get a list of all members belonging to the gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: object
- *           items:
- *             $ref: '#/components/schemas/Member'
- *         example:
- *           message: "Member deleted successfully"
- *           ok: true
- *     401:
- *       description:bad request, or user not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Members listed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Member'
+ *       400:
+ *         description: Bad request or gym not found
+ *       500:
+ *         description: Internal server error
  */
-memberRouter.delete("/:id", deleteMember);
+memberRouter.get("/", listMembersOfGym);
+
+/**
+ * @swagger
+ * /api/v1/members/filter:
+ *   get:
+ *     tags: [Members]
+ *     summary: Get member by name
+ *     description: Find a member by their name
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: name
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member found successfully
+ *       400:
+ *         description: Bad request or gym not found
+ *       404:
+ *         description: Member not found
+ *       500:
+ *         description: Internal server error
+ */
+memberRouter.get("/filter", getMemberByName);
 
 /**
  * @swagger
  * /api/v1/members/{id}:
- * put:
- * summary: update member
- * description: update member in the gym
- * parameters:
- * - name: id
- *   in: path
- *   required: true
- *   schema:
- *     type: integer
- * requestBody:
- *   required: true
- *   content:
- *     application/json:
- *       schema:
- *         type: object
- *         items:
- *           $ref: '#/components/schemas/Member'
- *         example:
- *           months: 12
- *           price: 1200
- * responses:
- *   200:
- *     description: Member updated successfully
- *     content:
- *       application/json:
+ *   get:
+ *     tags: [Members]
+ *     summary: Get member by ID
+ *     description: Retrieve a single member by their ID
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
  *         schema:
- *           type: object
- *           items:
- *             $ref: '#/components/schemas/Member'
- *         example:
- *           message: "Member updated successfully"
- *           ok: true
- *     401:
- *       description:bad request, or user not found
+ *           type: integer
+ *       - name: gym_id
+ *         in: header
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Member found successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 member:
+ *                   $ref: '#/components/schemas/Member'
+ *       400:
+ *         description: Bad request or gym not found
+ *       500:
+ *         description: Internal server error
+ */
+memberRouter.get("/:id", getMemberById);
+
+/**
+ * @swagger
+ * /api/v1/members/{id}:
+ *   put:
+ *     tags: [Members]
+ *     summary: Update a member
+ *     description: Update a member's subscription details (months and price)
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: gym_id
+ *         in: header
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - months
+ *               - price
+ *             properties:
+ *               months:
+ *                 type: integer
+ *                 example: 6
+ *               price:
+ *                 type: number
+ *                 example: 600
+ *     responses:
+ *       200:
+ *         description: Member updated successfully
+ *       400:
+ *         description: Bad request or gym/member not found
+ *       500:
+ *         description: Internal server error
  */
 memberRouter.put("/:id", updateMember);
 
 /**
  * @swagger
  * /api/v1/members/{id}:
- * get:
- * summary: get member by id
- * description: get member by id from the gym
- * parameters:
- * - name: id
- *   in: path
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Member found successfully
- *     content:
- *       application/json:
+ *   delete:
+ *     tags: [Members]
+ *     summary: Delete a member
+ *     description: Delete a member from the gym
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
  *         schema:
- *           type: object
- *           items:
- *             $ref: '#/components/schemas/Member'
- *         example:
- *           message: "Member found successfully"
- *           ok: true
- *           member: ["member1"]
- *     401:
- *       description: bad request, or user not found
- */
-memberRouter.get("/:id", getMemberById);
-
-/**
- * @swagger
- * /api/v1/members/filter:
- * get:
- * summary: get member by name
- * description: get member by name from the gym
- * parameters:
- * - name: name
- *   in: query
- *   required: true
- *   schema:
- *     type: string
- * responses:
- *   200:
- *     description: Member found successfully
- *     content:
- *       application/json:
+ *           type: integer
+ *       - name: gym_id
+ *         in: header
+ *         required: true
  *         schema:
- *           type: object
- *           items:
- *             $ref: '#/components/schemas/Member'
- *         example:
- *           message: "Member found successfully"
- *           ok: true
- *           members: ["member1"]
- *     401:
- *       description: bad request, or user not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Member deleted successfully
+ *       400:
+ *         description: Bad request or gym/member not found
+ *       500:
+ *         description: Internal server error
  */
-memberRouter.get("/filter", getMemberByName);
-
-/**
- * @swagger
- * /api/v1/members:
- * get:
- * summary: list members of gym
- * description: list members of gym from the gym
- * responses:
- *   200:
- *     description: Members listed successfully
- *     content:
- *       application/json:
- *         schema:
- *           type: object
- *           items:
- *             $ref: '#/components/schemas/Member'
- *         example:
- *           message: "Members listed successfully"
- *           ok: true
- *           members: ["member1", "member2", "member3"]
- *     401:
- *       description:bad request, or no members found
- */
-memberRouter.get("/", listMembersOfGym);
+memberRouter.delete("/:id", deleteMember);
 
 export default memberRouter;

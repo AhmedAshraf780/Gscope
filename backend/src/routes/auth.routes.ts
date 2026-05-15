@@ -26,53 +26,64 @@ const authRouter = Router();
  * @swagger
  * /api/v1/auth/signin:
  *   post:
- *     summary: Validate gym credentials
- *     description: Returns the gym data if the credentials are valid
+ *     tags: [Auth]
+ *     summary: Authenticate gym owner
+ *     description: Validates email and password, returns a JWT token as an httpOnly cookie
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             items:
- *               $ref: '#/components/schemas/User'
- *             example:
- *                 email: johndoe@example.com
- *                 password: password123
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: johndoe@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: password123
  *     responses:
  *       200:
- *         description: User data
+ *         description: Login successful
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               items:
- *                 $ref: '#/components/schemas/User'
- *             example:
- *               - id: 1
- *                 name: John Doe
- *                 email: johndoe@example.com
- *               - id: 2
- *                 name: Jane Doe
- *                 email: janedoe@example.com
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Gym found, login successful"
+ *                 gym_id:
+ *                   type: integer
+ *                   example: 1
+ *                 name:
+ *                   type: string
+ *                   example: "John Doe"
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
  *       401:
  *         description: Invalid credentials
+ *       500:
+ *         description: Internal server error
  */
 authRouter.post(
   "/signin",
   async (req: Request<{}, {}, loginRequest>, res: Response<signInResponse>) => {
     try {
-      // parse the request body
       const { email, password } = req.body;
 
-      // validate the fields ( types , min length, max length, etc)
       if (!email || !password) {
         return res
           .status(401)
           .json({ message: "Invalid credentials", ok: false });
       }
 
-      // check if gym is already exists
       const gym: Company | null = await db.getCompanyByEmail(email);
       if (!gym) {
         return res
@@ -80,7 +91,6 @@ authRouter.post(
           .json({ message: "Invalid credentials", ok: false });
       }
 
-      // validate the password
       const ok = await bcrypt.compare(password, gym.password);
       if (!ok) {
         return res
@@ -88,13 +98,12 @@ authRouter.post(
           .json({ message: "Invalid credentials", ok: false });
       }
 
-      // create jsonwebtoken
       const token = jwt.sign({ gym_id: gym.id }, config.jwt_secret, {
         expiresIn: "1h",
       });
 
       res.cookie(config.auth_token, token, {
-        secure: false, // TODO: CHANGE TO TRUE in PROD
+        secure: false,
         httpOnly: true,
         sameSite: "lax",
         maxAge: 3600 * 1000,
@@ -120,32 +129,59 @@ authRouter.post(
  * @swagger
  * /api/v1/auth/signup:
  *   post:
- *     summary: Create a new user
- *     description: Returns ok and json OTP to user's email
+ *     tags: [Auth]
+ *     summary: Register a new gym
+ *     description: Creates a new gym account and sends an OTP verification email
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             items:
- *               $ref: '#/components/schemas/User'
- *             example:
- *                 name: John Doe
- *                 email: johndoe@example.com
- *                 password: password123
- *                 address: 123 Main St, Abrag Elmadina
- *                 phone: 0111222333
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *               - phone
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: johndoe@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: password123
+ *               phone:
+ *                 type: string
+ *                 example: "0111222333"
+ *               address:
+ *                 type: string
+ *                 example: "123 Main St, Abrag Elmadina"
  *     responses:
- *       200:
- *         description: Ok user data is validated
+ *       201:
+ *         description: OTP sent to user's email
  *         content:
  *           application/json:
- *             example:
- *               message: OTP sent to user's email
- *               session: 1234567890
- *       401:
- *         description: Invalid credentials, bad request, or user already exists
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent to user's email"
+ *                 session:
+ *                   type: string
+ *                   example: "abc-123-def-456"
+ *       400:
+ *         description: Invalid credentials or gym already exists
+ *       500:
+ *         description: Internal server error
  */
 authRouter.post(
   "/signup",
@@ -154,24 +190,20 @@ authRouter.post(
     res: Response<createUserResponse>,
   ) => {
     try {
-      // parse the request body
       const { name, email, password, phone } = req.body;
 
-      // validate the fields ( types , min length, max length, etc)
       if (!name || !email || !password || !phone) {
         return res
-          .status(401)
+          .status(400)
           .json({ ok: false, message: "Invalid credentials" });
       }
-      // check if the user exists
       const exists = await db.getCompanyByEmail(email);
       if (exists) {
         return res
-          .status(401)
+          .status(400)
           .json({ ok: false, message: "Gym already exists" });
       }
 
-      // create the user
       const otp = generateOTP();
       const newGym = {
         name,
@@ -185,8 +217,6 @@ authRouter.post(
 
       console.log(newGym);
 
-      // we need to json otp code to the user's email and save the user in the redis
-      // until we verify the otp code
       const sent = await sendOTPEmail(email, otp);
       if (!sent) {
         return res
@@ -194,7 +224,6 @@ authRouter.post(
           .json({ ok: false, message: "Error sending OTP" });
       }
 
-      // save the user in redis
       const redisSession = uuidv4();
       await redisClient.set(redisSession, JSON.stringify(newGym));
       return res.status(201).json({
@@ -216,28 +245,45 @@ authRouter.post(
  * @swagger
  * /api/v1/auth/forgotpassword:
  *   post:
- *     summary: restore user's password
- *     description: Returns ok and sends OTP to user's email
+ *     tags: [Auth]
+ *     summary: Request password reset
+ *     description: Sends an OTP to the user's email for password recovery
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             items:
- *               $ref: '#/components/schemas/User'
- *             example:
- *                 email: johndoe@example.com
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: johndoe@example.com
  *     responses:
  *       200:
- *         description: Ok user exists and OTP is sent
+ *         description: OTP sent to user's email
  *         content:
  *           application/json:
- *             example:
- *               message: OTP sent to user's email
- *               session: 1234567890
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent to user's email"
+ *                 session:
+ *                   type: string
+ *                   example: "abc-123-def-456"
+ *       400:
+ *         description: Invalid credentials
  *       401:
- *         description: user not found
+ *         description: Gym not found
+ *       500:
+ *         description: Internal server error
  */
 authRouter.post(
   "/forgotpassword",
@@ -249,7 +295,7 @@ authRouter.post(
       const { email } = req.body;
       if (!email) {
         return res
-          .status(401)
+          .status(400)
           .json({ ok: false, message: "Invalid credentials" });
       }
       const gym = await db.getCompanyByEmail(email);
@@ -295,25 +341,51 @@ authRouter.post(
  * @swagger
  * /api/v1/auth/restorepassword:
  *   post:
- *     summary: restore user's password
- *     description: Returns ok and sends OTP to user's email
+ *     tags: [Auth]
+ *     summary: Reset password with OTP session
+ *     description: Sets a new password after OTP verification using the session token
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *             example:
- *                 password: 123456
- *                 confirmPassword: 123456
- *                 session: 1234567890
+ *           schema:
+ *             type: object
+ *             required:
+ *               - password
+ *               - confirmPassword
+ *               - session
+ *             properties:
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "newPassword123"
+ *               confirmPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: "newPassword123"
+ *               session:
+ *                 type: string
+ *                 example: "abc-123-def-456"
  *     responses:
  *       200:
- *         description: Ok user exists and OTP is sent
+ *         description: Password changed successfully
  *         content:
  *           application/json:
- *             example:
- *               message: password changed
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Password changed"
+ *       400:
+ *         description: Invalid credentials or password mismatch
  *       401:
- *         description: user not found
+ *         description: Session not found or OTP missed
+ *       500:
+ *         description: Internal server error
  */
 authRouter.post(
   "/restorepassword",
@@ -325,13 +397,13 @@ authRouter.post(
       const { password, confirmPassword, session } = req.body;
       if (!password || !confirmPassword || !session) {
         return res
-          .status(401)
+          .status(400)
           .json({ ok: false, message: "Invalid credentials" });
       }
 
       if (password !== confirmPassword) {
         return res
-          .status(401)
+          .status(400)
           .json({ ok: false, message: "Passwords do not match" });
       }
 
@@ -372,24 +444,49 @@ authRouter.post(
  * @swagger
  * /api/v1/auth/validateotp:
  *   post:
- *     summary: Get OTP from body and validate it with the one in the in-memory store
- *     description: Returns ok user data is validated
+ *     tags: [Auth]
+ *     summary: Validate OTP code
+ *     description: Validates the OTP code from the user. On success, finalizes registration or marks OTP as verified for password reset.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *             example:
- *                 email: johndoe@example.com
- *                 otp: 123456
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session
+ *               - otp
+ *             properties:
+ *               session:
+ *                 type: string
+ *                 example: "abc-123-def-456"
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
  *     responses:
  *       200:
- *         description: Ok otp is correct
+ *         description: OTP is correct
  *         content:
  *           application/json:
- *             example:
- *               message: OTP is correct
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "OTP is correct"
+ *                 forgotPassword:
+ *                   type: boolean
+ *                   example: false
+ *                 session:
+ *                   type: string
+ *                   example: "abc-123-def-456"
  *       401:
- *         description: Invalid otp
+ *         description: Invalid OTP or session not found
+ *       500:
+ *         description: Internal server error
  */
 authRouter.post(
   "/validateotp",
@@ -421,7 +518,6 @@ authRouter.post(
         });
       }
 
-      // TODO: MOVE SALT TO ENV
       const hashedPassword = bcrypt.hashSync(gymData.password, 10);
       const g: Company = {
         name: gymData.name,
@@ -440,10 +536,8 @@ authRouter.post(
         });
       }
 
-      // create the bank account
       const ok = await db.addBank(gym_id, 0);
       if (!ok) {
-        // delete the company
         await db.deleteCompanyById(gym_id);
         return res
           .status(500)
@@ -470,17 +564,34 @@ authRouter.post(
  * @swagger
  * /api/v1/auth/resendotp:
  *   post:
- *     summary: resend otp to user's email
- *     description: Returns ok otp is sent again
+ *     tags: [Auth]
+ *     summary: Resend OTP email
+ *     description: Generates a new OTP and sends it again to the user's email
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *             example:
- *                 email: johndoe@example.com
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session
+ *             properties:
+ *               session:
+ *                 type: string
+ *                 example: "abc-123-def-456"
  *     responses:
  *       200:
- *         description: Ok otp is resent
+ *         description: OTP resent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP is resent"
+ *       500:
+ *         description: Internal server error
  */
 authRouter.post("/resendotp", async (req, res) => {
   const { session } = req.body;
@@ -491,11 +602,9 @@ authRouter.post("/resendotp", async (req, res) => {
       return res.status(200).json({ message: "Invalid session" });
     }
 
-    // we are now in the resend case
     const gymData = JSON.parse(user);
     gymData.otp = otp;
 
-    // json the otp to the user's email
     const sent = await sendOTPEmail(gymData.email, otp);
     if (!sent) {
       return res.status(500).json({ message: "Error sending OTP" });
@@ -514,5 +623,3 @@ authRouter.post("/resendotp", async (req, res) => {
 
 
 export default authRouter;
-
-

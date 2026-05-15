@@ -10,132 +10,136 @@ const router = Router();
 /**
  * @swagger
  * /api/v1/companies/{company_id}:
- * get:
- * summary: Get company by ID
- * description: Get company by ID
- * parameters:
- * - name: company_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Successfully retrieved company
- *     content:
- *       application/json:
+ *   get:
+ *     tags: [Company]
+ *     summary: Get company by ID
+ *     description: Retrieve a company by its ID
+ *     parameters:
+ *       - name: company_id
+ *         in: path
+ *         required: true
  *         schema:
- *           type: object
- *           properties:
- *             company_id:
- *               type: integer
- *               example: 123
- *             name:
- *               type: string
- *               example: "Gym"
- *             address:
- *               type: string
- *               example: "123 Main St"
- *   401:
- *     description: Company not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved company
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 1
+ *                 name:
+ *                   type: string
+ *                   example: "My Gym"
+ *                 email:
+ *                   type: string
+ *                   example: "owner@gym.com"
+ *                 phone:
+ *                   type: string
+ *                   example: "0111222333"
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
  */
 router.get("/:company_id", getCompanyById);
 /**
  * @swagger
  * /api/v1/companies:
- * get:
- * summary: Get all companies
- * description: Get all companies
- * parameters:
- * - name: gym_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Successfully retrieved companies
- *     content:
- *       application/json:
- *         schema:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/Company'
- *   401:
- *     description: Companies not found
+ *   get:
+ *     tags: [Company]
+ *     summary: Get all companies
+ *     description: Retrieve a list of all companies
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved companies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Company'
+ *       500:
+ *         description: Internal server error
  */
 router.get("/", getAllCompanies);
 /**
  * @swagger
  * /api/v1/companies/{company_id}:
- * put:
- * summary: Update company by ID
- * description: Update company by ID
- * parameters:
- * - name: company_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * requestBody:
- *   required: true
- *   content:
- *     application/json:
- *       schema:
- *         type: object
- *         properties:
- *           name:
- *             type: string
- *             example: "Gym"
- *           address:
- *             type: string
- *             example: "123 Main St"
- * responses:
- *   200:
- *     description: Successfully updated company
- *     content:
- *       application/json:
+ *   put:
+ *     tags: [Company]
+ *     summary: Update company by ID
+ *     description: Update an existing company's details
+ *     parameters:
+ *       - name: company_id
+ *         in: path
+ *         required: true
  *         schema:
- *           type: object
- *           properties:
- *             message:
- *               type: string
- *               example: "Company updated successfully"
- *             company_id:
- *               type: integer
- *               example: 123
- *   401:
- *     description: Company not found
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "My Gym"
+ *               email:
+ *                 type: string
+ *                 example: "owner@gym.com"
+ *               phone:
+ *                 type: string
+ *                 example: "0111222333"
+ *     responses:
+ *       200:
+ *         description: Company updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Company updated successfully"
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
  */
 router.put("/:company_id", updateCompany);
 /**
  * @swagger
  * /api/v1/companies/{company_id}:
- * delete:
- * summary: Delete company by ID
- * description: Delete company by ID
- * parameters:
- * - name: company_id
- *   in: header
- *   required: true
- *   schema:
- *     type: integer
- * responses:
- *   200:
- *     description: Successfully deleted company
- *     content:
- *       application/json:
+ *   delete:
+ *     tags: [Company]
+ *     summary: Delete company by ID
+ *     description: Delete a company by its ID
+ *     parameters:
+ *       - name: company_id
+ *         in: path
+ *         required: true
  *         schema:
- *           type: object
- *           properties:
- *             message:
- *               type: string
- *               example: "Company deleted successfully"
- *             company_id:
- *               type: integer
- *               example: 123
- *   401:
- *     description: Company not found
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Company deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Company deleted successfully"
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete("/:company_id", deleteCompanyById);
 export default router;

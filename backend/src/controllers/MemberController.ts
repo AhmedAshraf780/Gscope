@@ -22,23 +22,6 @@ export const addMember = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "Name must be between 2 and 15 characters" });
     }
-    // if (
-    //   phone.length != 11 ||
-    //   phone[0] !== "0" ||
-    //   phone[1] !== "1" ||
-    //   !["0", "1", "2", "5"].includes(phone[2])
-    // ) {
-    //   return res
-    //     .status(400)
-    //     .json({ message: "you must enter a valid phone number" });
-    // }
-    // for (let i = 0; i < phone.length; i++) {
-    //   if (phone[i] < "0" || phone[i] > "9") {
-    //     return res
-    //       .status(400)
-    //       .json({ message: "you must enter a valid phone number" });
-    //   }
-    // }
 
     const member: Member = {
       name: name,
@@ -57,7 +40,6 @@ export const addMember = async (req: Request, res: Response) => {
 
     await db.addMember(member, Number(gym_id));
 
-    // check offer_id
     if (offer_id) {
       const ok = await db.updateOfferCount(Number(offer_id));
       if (!ok) {
@@ -65,7 +47,6 @@ export const addMember = async (req: Request, res: Response) => {
       }
     }
 
-    // update the bank account
     const ok = await db.updateBank(Number(gym_id), price);
     if (!ok) {
       return res.status(500).json({ message: "Error updating bank account" });
@@ -88,8 +69,6 @@ export const deleteMember = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Member ID is required" });
     }
 
-    // WARNING: this code will lead to errors and the user will get 500 even the server is running
-    // you should handle all the cases and i am not talking about validation of the input
     const gym = db.getCompanyById(Number(gym_id));
     if (!gym) {
       return res.status(400).json({ message: "Gym not found" });
@@ -127,9 +106,6 @@ export const updateMember = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "invalid price" });
     }
 
-    // WARNING: this code will lead to errors and the user will get 500 even the server is running
-    // you should handle all the cases and i am not talking about validation of the input
-
     const gym = db.getCompanyById(Number(gym_id));
     if (!gym) {
       return res.status(400).json({ message: "Gym not found" });
@@ -145,7 +121,6 @@ export const updateMember = async (req: Request, res: Response) => {
     if (!ok) {
       return res.status(500).json({ message: "Error updating member" });
     }
-    // update the bank account
     const bankOk = await db.updateBank(Number(gym_id), price);
     if (!bankOk) {
       return res.status(500).json({ message: "Error updating bank account" });
@@ -167,9 +142,6 @@ export const getMemberById = async (req: Request, res: Response) => {
     if (!id || isNaN(Number(id))) {
       return res.status(400).json({ message: "member id is required" });
     }
-
-    // WARNING: this code will lead to errors and the user will get 500 even the server is running
-    // you should handle all the cases and i am not talking about validation of the input
 
     const gym = db.getCompanyById(Number(gym_id));
     if (!gym) {
@@ -223,8 +195,6 @@ export const listMembersOfGym = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "gym id is required" });
     }
 
-    // WARNING: this code will lead to errors and the user will get 500 even the server is running
-    // you should handle all the cases and i am not talking about validation of the input
     const gym = db.getCompanyById(Number(gym_id));
     if (!gym) {
       return res.status(400).json({ message: "Gym not found" });
@@ -239,6 +209,53 @@ export const listMembersOfGym = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/members/sessions:
+ *   post:
+ *     tags: [Sessions]
+ *     summary: Add a new session
+ *     description: Record a new session for a member
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - session_date
+ *               - session_type
+ *               - price
+ *               - member_name
+ *             properties:
+ *               session_date:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-05-15"
+ *               session_type:
+ *                 type: string
+ *                 enum: [gym, football, swimming]
+ *                 example: "gym"
+ *               price:
+ *                 type: number
+ *                 example: 50
+ *               member_name:
+ *                 type: string
+ *                 example: "John Doe"
+ *     responses:
+ *       200:
+ *         description: Session added successfully
+ *       400:
+ *         description: Invalid input or gym not found
+ *       500:
+ *         description: Internal server error
+ */
 export const addSession = async (req: Request, res: Response) => {
   try {
     const { session_date, session_type, price, member_name } = req.body;
@@ -280,7 +297,6 @@ export const addSession = async (req: Request, res: Response) => {
 
     await db.addSession(session, Number(gym_id));
 
-    // update the bank account
     const ok = await db.updateBank(Number(gym_id), price);
     if (!ok) {
       return res.status(500).json({ message: "Error updating bank account" });
@@ -294,20 +310,34 @@ export const addSession = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * @swagger
+ * /api/v1/members/sessions:
+ *   get:
+ *     tags: [Sessions]
+ *     summary: List all sessions
+ *     description: Retrieve all sessions for the gym
+ *     parameters:
+ *       - name: gym_id
+ *         in: header
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Sessions retrieved successfully
+ *       400:
+ *         description: Invalid gym ID or gym not found
+ *       500:
+ *         description: Internal server error
+ */
 export const listSessions = async (req: Request, res: Response) => {
   try {
-    // const { type } = req.body;
     const gym_id = req.gym_id;
 
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "invalide gym id" });
     }
-    // if (!type || typeof type !== "string") {
-    // return res.status(400).json({ message: "session type is required" });
-    // }
-    // if (!["gym", "football", "swimming"].includes(type.toLowerCase())) {
-    //   return res.status(400).json({ message: "invalid session type" });
-    // }
 
     const gym = db.getCompanyById(Number(gym_id));
     if (!gym) {
