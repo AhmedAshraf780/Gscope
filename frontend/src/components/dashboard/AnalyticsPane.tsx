@@ -3,15 +3,11 @@ import { analysisService } from "../../services/analysis.service";
 
 export function AnalyticsPane() {
   const [activeTab, setActiveTab] = useState<"month" | "day">("month");
-
-  const [monthInput, setMonthInput] = useState(() =>
-    new Date().toISOString().slice(0, 7),
-  ); // YYYY-MM
+  
+  const [monthInput, setMonthInput] = useState(() => new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [monthSessionType, setMonthSessionType] = useState("");
-
-  const [dayInput, setDayInput] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  ); // YYYY-MM-DD
+  
+  const [dayInput, setDayInput] = useState(() => new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
   const [daySessionType, setDaySessionType] = useState("");
 
   const [data, setData] = useState<any>(null);
@@ -23,18 +19,12 @@ export function AnalyticsPane() {
       try {
         if (activeTab === "month") {
           if (monthInput.length === 7) {
-            const res = await analysisService.getAdvancedMonthAnalysis(
-              monthInput,
-              monthSessionType,
-            );
+            const res = await analysisService.getAdvancedMonthAnalysis(monthInput, monthSessionType);
             setData(res);
           }
         } else {
           if (dayInput.length === 10) {
-            const res = await analysisService.getAdvancedDayAnalysis(
-              dayInput,
-              daySessionType,
-            );
+            const res = await analysisService.getAdvancedDayAnalysis(dayInput, daySessionType);
             setData(res);
           }
         }
@@ -44,7 +34,7 @@ export function AnalyticsPane() {
         setLoading(false);
       }
     }
-
+    
     fetchData();
   }, [activeTab, monthInput, monthSessionType, dayInput, daySessionType]);
 
@@ -63,9 +53,7 @@ export function AnalyticsPane() {
         {/* LEFT SIDE: CARDS */}
         <div className="grid gap-5 sm:grid-cols-3 xl:grid-cols-1 content-start">
           <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6 transition hover:border-white/20">
-            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">
-              Total Revenue
-            </p>
+            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Total Revenue</p>
             <p className="mt-3 font-display text-4xl text-emerald-400">
               ${data?.revenue?.totalRevenue ?? 0}
             </p>
@@ -76,30 +64,22 @@ export function AnalyticsPane() {
           </article>
 
           <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6 transition hover:border-white/20">
-            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">
-              Total Members
-            </p>
+            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Total Members</p>
             <p className="mt-3 font-display text-4xl text-white">
               {data?.members?.total ?? 0}
             </p>
           </article>
 
           <article className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6 transition hover:border-white/20">
-            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">
-              Total Sessions
-            </p>
+            <p className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Total Sessions</p>
             <p className="mt-3 font-display text-4xl text-white">
               {data?.sessions?.total ?? 0}
             </p>
             {activeTab === "month" && monthSessionType && (
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                Type: {monthSessionType}
-              </p>
+              <p className="mt-2 text-xs text-[var(--muted)]">Type: {monthSessionType}</p>
             )}
             {activeTab === "day" && daySessionType && (
-              <p className="mt-2 text-xs text-[var(--muted)]">
-                Type: {daySessionType}
-              </p>
+              <p className="mt-2 text-xs text-[var(--muted)]">Type: {daySessionType}</p>
             )}
           </article>
         </div>
@@ -133,9 +113,7 @@ export function AnalyticsPane() {
             {activeTab === "month" ? (
               <>
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    Select Month
-                  </span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Select Month</span>
                   <input
                     type="month"
                     value={monthInput}
@@ -144,9 +122,7 @@ export function AnalyticsPane() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    Session Type
-                  </span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Session Type</span>
                   <select
                     value={monthSessionType}
                     onChange={(e) => setMonthSessionType(e.target.value)}
@@ -162,9 +138,7 @@ export function AnalyticsPane() {
             ) : (
               <>
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    Select Date
-                  </span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Select Date</span>
                   <input
                     type="date"
                     value={dayInput}
@@ -173,9 +147,7 @@ export function AnalyticsPane() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    Session Type
-                  </span>
+                  <span className="mb-2 block text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Session Type</span>
                   <select
                     value={daySessionType}
                     onChange={(e) => setDaySessionType(e.target.value)}

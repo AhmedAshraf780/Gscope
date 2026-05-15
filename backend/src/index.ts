@@ -27,8 +27,12 @@ declare global {
     interface Request {
       gym_id?: number;
     }
+    interface Response {
+      errorMsg?: string | unknown;
+    }
   }
 }
+
 export const clients: Response[] = [];
 const app = express();
 
@@ -69,7 +73,15 @@ app.get("/events", (req, res: Response) => {
 
 // test route
 app.get("/", (_: Request, res: Response) => {
-  res.json({ message: "Hello World!" });
+  try {
+    (() => {
+      throw new Error("what the fuck you are doing");
+      res.json({ message: "Hello World!" });
+    })();
+  } catch (err) {
+    res.errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 app.use("/api/v1/auth", authRouter);

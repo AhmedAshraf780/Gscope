@@ -41,6 +41,9 @@ export type BasicAnalysis = {
   todaysessions: number;
   todayMembers: number;
   activeMembers: number;
+  memberslogedtoday: number;
+  membersOfTheGym: number;
+  membersExpiringSoon: number;
 };
 
 export type OfferOption = {

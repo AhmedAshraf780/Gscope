@@ -1,11 +1,12 @@
 import { createContext } from 'react'
-import type { PendingOtpSession, StoredAuth } from './authStorage'
+import type { PendingOtpSession } from './authStorage'
 
 export type AuthContextValue = {
-  auth: StoredAuth | null
-  pendingOtpSession: PendingOtpSession | null
   isAuthenticated: boolean
-  setAuthenticatedFromResponse: (payload: unknown) => void
+  gymId: number | null
+  userName: string | null
+  pendingOtpSession: PendingOtpSession | null
+  login: (user: { gym_id: number; name: string }) => void
   logout: () => void
   savePendingOtpSession: (payload: PendingOtpSession) => void
   clearOtpSession: () => void

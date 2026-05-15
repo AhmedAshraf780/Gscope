@@ -1,150 +1,460 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Core Sentinel | Server Monitor</title>
-    <style>
-        :root {
-            --bg: #0a0b10;
-            --card-bg: rgba(20, 22, 30, 0.8);
-            --accent: #00f2ff;
-            --success: #00ff88;
-            --error: #ff4444;
-            --warning: #ffaa00;
-            --text: #e0e0e0;
-        }
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>CORE SENTINEL // LIVE TRAFFIC</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://unpkg.com/lucide@latest"></script>
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            font-family: 'Segoe UI', 'Roboto', monospace;
-            margin: 0;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+        <style>
+            :root {
+                --bg: #050608;
+                --surface: #0d0f14;
+                --card-bg: rgba(20, 22, 30, 0.6);
+                --accent: #00f2ff;
+                --accent-glow: rgba(0, 242, 255, 0.3);
+                --success: #00ff88;
+                --error: #ff4444;
+                --warning: #ffaa00;
+                --text-main: #e0e6ed;
+                --text-dim: #6b7280;
+                --border: #1f2937;
+            }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
-        }
+            * {
+                box-sizing: border-box;
+                transition: background 0.2s ease;
+            }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 1rem;
-            margin-bottom: 2rem;
-        }
+            body {
+                background: var(--bg);
+                background-image:
+                    radial-gradient(
+                        circle at 50% 50%,
+                        #10141d 0%,
+                        #050608 100%
+                    ),
+                    linear-gradient(
+                        rgba(18, 16, 16, 0) 50%,
+                        rgba(0, 0, 0, 0.1) 50%
+                    ),
+                    linear-gradient(
+                        90deg,
+                        rgba(255, 0, 0, 0.03),
+                        rgba(0, 255, 0, 0.01),
+                        rgba(0, 0, 255, 0.03)
+                    );
+                background-size:
+                    100% 100%,
+                    100% 4px,
+                    100% 100%;
+                color: var(--text-main);
+                font-family: "JetBrains Mono", "Fira Code", monospace;
+                margin: 0;
+                padding: 1.5rem;
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
 
-        h2 {
-            margin: 0;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--accent);
-            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
-        }
+            .dashboard {
+                max-width: 1400px;
+                margin: 0 auto;
+                display: grid;
+                grid-template-columns: 3fr 1fr;
+                gap: 1.5rem;
+            }
 
-        .status-dot {
-            height: 10px;
-            width: 10px;
-            background-color: var(--success);
-            border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 8px var(--success);
-            margin-right: 8px;
-        }
+            header {
+                grid-column: span 2;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 1rem;
+                margin-bottom: 1rem;
+            }
 
-        #logs {
-            list-style: none;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+            .logo-area h1 {
+                margin: 0;
+                font-size: 1.5rem;
+                letter-spacing: 4px;
+                text-transform: uppercase;
+                color: var(--accent);
+                text-shadow: 0 0 15px var(--accent-glow);
+            }
 
-        .log-entry {
-            background: var(--card-bg);
-            border-left: 4px solid var(--accent);
-            padding: 12px 20px;
-            border-radius: 4px;
-            display: grid;
-            grid-template-columns: 80px 1fr 100px 80px;
-            align-items: center;
-            font-family: 'Courier New', Courier, monospace;
-            backdrop-filter: blur(5px);
-            animation: slideIn 0.3s ease-out;
-            transition: transform 0.2s;
-        }
+            .stats-bar {
+                display: flex;
+                gap: 2rem;
+            }
+            .stat-card {
+                text-align: right;
+            }
+            .stat-label {
+                font-size: 0.65rem;
+                color: var(--text-dim);
+                text-transform: uppercase;
+            }
+            .stat-value {
+                font-size: 1.2rem;
+                font-weight: bold;
+                display: block;
+            }
 
-        .log-entry:hover {
-            transform: scale(1.01);
-            background: rgba(30, 35, 45, 0.9);
-        }
+            .chart-container {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                padding: 1rem;
+                border-radius: 4px;
+                margin-bottom: 1.5rem;
+                height: 180px;
+            }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
+            .toolbar {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 1rem;
+                background: var(--surface);
+                padding: 0.75rem;
+                border-radius: 4px;
+                border: 1px solid var(--border);
+            }
 
-        .method { font-weight: bold; color: var(--accent); }
-        .url { color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .duration { text-align: right; color: #888; font-size: 0.9rem; }
-        .status { font-weight: bold; text-align: center; border-radius: 4px; padding: 2px 6px; }
-        
-        /* Status Colors */
-        .status-2xx { color: var(--success); }
-        .status-4xx { color: var(--warning); }
-        .status-5xx { color: var(--error); }
-    </style>
-</head>
-<body>
+            input,
+            select {
+                background: #161b22;
+                border: 1px solid var(--border);
+                color: var(--accent);
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
+                outline: none;
+                font-family: inherit;
+            }
 
-<div class="container">
-    <header>
-        <h2><span class="status-dot"></span>Live Traffic</h2>
-        <div id="connection-status" style="font-size: 0.8rem; color: #666;">STREAMING ACTIVE</div>
-    </header>
+            .log-header {
+                display: grid;
+                grid-template-columns: 100px 80px 1fr 100px 80px;
+                padding: 0.75rem;
+                color: var(--text-dim);
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                border-bottom: 1px solid var(--border);
+            }
 
-    <ul id="logs">
-        </ul>
-</div>
+            #logs {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                max-height: 60vh;
+                overflow-y: auto;
+            }
 
-<script>
-    const logs = document.getElementById("logs");
-    const eventSource = new EventSource("http://localhost:6969/events");
+            .log-entry {
+                display: grid;
+                grid-template-columns: 100px 80px 1fr 100px 80px;
+                gap: 10px;
+                padding: 0.75rem;
+                border-bottom: 1px solid #161b22;
+                font-size: 0.85rem;
+            }
 
-    eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        // Determine status class
-        const statusType = Math.floor(data.status / 100) + 'xx';
-        
-        const li = document.createElement("li");
-        li.className = "log-entry";
-        
-        li.innerHTML = `
-            <span class="method">${data.method}</span>
-            <span class="url">${data.url}</span>
-            <span class="duration">${data.duration}ms</span>
-            <span class="status status-${statusType}">${data.status}</span>
-        `;
+            .method {
+                font-weight: bold;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 0.7rem;
+                text-align: center;
+            }
+            .GET {
+                color: #61afef;
+                border: 1px solid #61afef;
+            }
+            .POST {
+                color: #c678dd;
+                border: 1px solid #c678dd;
+            }
+            .url {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
 
-        logs.prepend(li);
+            .status-2xx {
+                color: var(--success);
+            }
+            .status-4xx {
+                color: var(--warning);
+            }
+            .status-5xx {
+                color: var(--error);
+            }
 
-        // Keep only the last 20 logs to prevent memory bloat
-        if (logs.children.length > 20) {
-            logs.removeChild(logs.lastChild);
-        }
-    };
+            .panel {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                padding: 1rem;
+                border-radius: 4px;
+            }
 
-    eventSource.onerror = () => {
-        document.getElementById("connection-status").textContent = "CONNECTION LOST";
-        document.querySelector(".status-dot").style.backgroundColor = "#ff4444";
-    };
-</script>
+            .pulse {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                background: var(--success);
+                border-radius: 50%;
+                margin-right: 8px;
+                box-shadow: 0 0 10px var(--success);
+                animation: blink 1.5s infinite;
+            }
 
-</body>
+            @keyframes blink {
+                50% {
+                    opacity: 0.3;
+                }
+            }
+            ::-webkit-scrollbar {
+                width: 4px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: var(--border);
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="dashboard">
+            <header>
+                <div class="logo-area">
+                    <h1>Core Sentinel</h1>
+                    <div id="status-text">
+                        <span class="pulse"></span>STREAMING_ACTIVE
+                    </div>
+                </div>
+                <div class="stats-bar">
+                    <div class="stat-card">
+                        <span class="stat-label">Requests/s</span>
+                        <span id="rps" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Avg Latency</span>
+                        <span id="avg-lat" class="stat-value">0ms</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Error Rate</span>
+                        <span id="err-rate" class="stat-value">0%</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-view">
+                <div class="chart-container">
+                    <canvas id="latencyChart"></canvas>
+                </div>
+
+                <div class="toolbar">
+                    <input
+                        id="searchRequestId"
+                        placeholder="FILTER BY REQUEST_ID..."
+                        style="flex-grow: 1"
+                    />
+                    <select id="statusFilter">
+                        <option value="all">ALL TRAFFIC</option>
+                        <option value="success">SUCCESS (2xx)</option>
+                        <option value="failed">ERRORS (4xx+)</option>
+                    </select>
+                </div>
+
+                <div class="panel" style="padding: 0">
+                    <div class="log-header">
+                        <span>ID</span><span>Method</span><span>URL</span
+                        ><span style="text-align: right">Lat</span
+                        ><span style="text-align: center">Stat</span>
+                    </div>
+                    <ul id="logs"></ul>
+                </div>
+            </main>
+
+            <aside class="sidebar">
+                <div class="panel">
+                    <h3
+                        style="
+                            font-size: 0.8rem;
+                            color: var(--accent);
+                            margin-top: 0;
+                        "
+                    >
+                        TOP ENDPOINTS
+                    </h3>
+                    <div
+                        id="endpoints-list"
+                        style="font-size: 0.75rem; line-height: 2"
+                    ></div>
+                </div>
+            </aside>
+        </div>
+
+        <script>
+            lucide.createIcons();
+
+            const logsEl = document.getElementById("logs");
+            const endpointsListEl = document.getElementById("endpoints-list");
+            const rpsEl = document.getElementById("rps");
+
+            const logs = [];
+            let requestTimes = [];
+
+            // 1. CHART INITIALIZATION
+            const ctx = document
+                .getElementById("latencyChart")
+                .getContext("2d");
+            const latencyChart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: Array(20).fill(""),
+                    datasets: [
+                        {
+                            data: Array(20).fill(0),
+                            borderColor: "#00f2ff",
+                            backgroundColor: "rgba(0, 242, 255, 0.1)",
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 2,
+                            pointRadius: 0,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: { y: { display: false }, x: { display: false } },
+                    plugins: { legend: { display: false } },
+                },
+            });
+
+            // 2. RPS CALCULATION (Sliding 1s window)
+            setInterval(() => {
+                const now = Date.now();
+                requestTimes = requestTimes.filter((t) => now - t < 1000);
+                rpsEl.textContent = requestTimes.length;
+            }, 100);
+
+            // 3. EVENT SOURCE
+            const eventSource = new EventSource("http://localhost:6969/events");
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    requestTimes.push(Date.now());
+
+                    logs.unshift(data);
+                    if (logs.length > 200) logs.pop();
+
+                    render();
+                    updateTopEndpoints();
+                    updateMetrics();
+                } catch (err) {
+                    console.error("Parse Error", err);
+                }
+            };
+
+            eventSource.onerror = () => {
+                document.getElementById("status-text").innerHTML =
+                    `<span class="pulse" style="background:var(--error); box-shadow:0 0 10px var(--error)"></span>OFFLINE`;
+            };
+
+            // 4. UI LOGIC
+            function render() {
+                const search = document
+                    .getElementById("searchRequestId")
+                    .value.trim()
+                    .toLowerCase();
+                const filter = document.getElementById("statusFilter").value;
+
+                logsEl.innerHTML = "";
+
+                const filtered = logs.filter((l) => {
+                    const matchId =
+                        !search ||
+                        String(l.requestId ?? "")
+                            .toLowerCase()
+                            .includes(search);
+                    const isSuccess = l.status >= 200 && l.status < 300;
+                    const isFailed = l.status >= 400;
+
+                    if (filter === "success") return matchId && isSuccess;
+                    if (filter === "failed") return matchId && isFailed;
+                    return matchId;
+                });
+
+                filtered.slice(0, 50).forEach((data) => {
+                    const statusGroup = Math.floor(data.status / 100) + "xx";
+                    const displayId = data.requestId
+                        ? String(data.requestId).slice(0, 6)
+                        : "----";
+
+                    const li = document.createElement("li");
+                    li.className = "log-entry";
+                    li.innerHTML = `
+                        <span style="color:var(--text-dim)">#${displayId}</span>
+                        <span class="method ${data.method}">${data.method}</span>
+                        <span class="url">${data.url}</span>
+                        <span style="text-align:right; color:${data.duration > 500 ? "var(--error)" : "var(--text-dim)"}">${data.duration}ms</span>
+                        <span class="status-${statusGroup}" style="text-align:center; font-weight:bold;">${data.status}</span>
+                    `;
+                    logsEl.appendChild(li);
+                });
+            }
+
+            function updateTopEndpoints() {
+                const counts = {};
+                logs.forEach((l) => {
+                    counts[l.url] = (counts[l.url] || 0) + 1;
+                });
+                const top = Object.entries(counts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+
+                endpointsListEl.innerHTML = top
+                    .map(
+                        ([url, count]) => `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;">${url}</span>
+                        <span style="color:var(--accent); font-weight:bold;">${count}</span>
+                    </div>
+                `,
+                    )
+                    .join("");
+            }
+
+            function updateMetrics() {
+                if (logs.length === 0) return;
+                const avgLat = Math.round(
+                    logs.reduce((a, b) => a + b.duration, 0) / logs.length,
+                );
+                const errRate = (
+                    (logs.filter((l) => l.status >= 400).length / logs.length) *
+                    100
+                ).toFixed(1);
+
+                document.getElementById("avg-lat").textContent = `${avgLat}ms`;
+                const errEl = document.getElementById("err-rate");
+                errEl.textContent = `${errRate}%`;
+                errEl.style.color =
+                    errRate > 10 ? "var(--error)" : "var(--success)";
+
+                latencyChart.data.datasets[0].data.push(avgLat);
+                latencyChart.data.datasets[0].data.shift();
+                latencyChart.update("none");
+            }
+
+            document
+                .getElementById("searchRequestId")
+                .addEventListener("input", render);
+            document
+                .getElementById("statusFilter")
+                .addEventListener("change", render);
+        </script>
+    </body>
 </html>

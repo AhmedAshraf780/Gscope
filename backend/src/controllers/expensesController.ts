@@ -34,6 +34,7 @@ export const createExpense = async (req: Request, res: Response) => {
     res.status(201).json(expense);
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -53,6 +54,7 @@ export const getAllExpenses = async (_req: Request, res: Response) => {
     res.status(200).json(expenses);
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -75,6 +77,7 @@ export const getExpenseById = async (req: Request, res: Response) => {
     return res.status(200).json(expense);
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -106,6 +109,7 @@ export const updateExpense = async (req: Request, res: Response) => {
     return res.status(200).json({ message: "expense updated successfully" });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -129,6 +133,7 @@ export const deleteExpense = async (req: Request, res: Response) => {
     return res.status(200).json({ message: "expense deleted successfully" });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -149,6 +154,7 @@ export const getTotalExpenses = async (req: Request, res: Response) => {
     return res.status(200).json({ total });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -180,6 +186,7 @@ export const getTotalExpensesByDateRange = async (
     return res.status(200).json({ total });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -207,6 +214,7 @@ export const getTotalByDateRange = async (req: Request, res: Response) => {
     return res.status(200).json({ total });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -234,6 +242,7 @@ export const getTotalByCategory = async (req: Request, res: Response) => {
     return res.status(200).json({ results: total });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -1,53 +1,63 @@
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getResponseMessage, getResponseSession, isResponseSuccess } from '../auth/authStorage'
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
 import { useToast } from '../toast/useToast'
+import { useFormik } from 'formik'
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate()
   const { savePendingOtpSession, clearOtpSession } = useAuth()
   const { toast } = useToast()
-  const [email, setEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setIsSubmitting(true)
-    clearOtpSession()
+  const formik = useFormik({
+    initialValues: {
+      email: '',
+    },
+    validate: (values) => {
+      const errors: Record<string, string> = {}
+      if (!values.email) {
+        errors.email = 'Required'
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(values.email)) {
+        errors.email = 'Invalid email address'
+      }
+      return errors
+    },
+    onSubmit: async (values, { setSubmitting }) => {
+      clearOtpSession()
 
-    const response = await authService.forgetPassword(email.trim())
-    setIsSubmitting(false)
+      const response = await authService.forgetPassword(values.email.trim())
+      setSubmitting(false)
 
-    if (!response || !isResponseSuccess(response)) {
-      toast({
-        title: 'Reset request failed',
-        description: getResponseMessage(response),
-        kind: 'error',
+      if (!response || !isResponseSuccess(response)) {
+        toast({
+          title: 'Reset request failed',
+          description: getResponseMessage(response),
+          kind: 'error',
+        })
+        return
+      }
+
+      const session = getResponseSession(response)
+      if (!session) {
+        toast({
+          title: 'Reset request failed',
+          description: 'Reset request succeeded but no OTP session was returned.',
+          kind: 'error',
+        })
+        return
+      }
+
+      savePendingOtpSession({
+        session,
+        email: values.email.trim(),
+        source: 'forgotpassword',
       })
-      return
-    }
-
-    const session = getResponseSession(response)
-    if (!session) {
-      toast({
-        title: 'Reset request failed',
-        description: 'Reset request succeeded but no OTP session was returned.',
-        kind: 'error',
-      })
-      return
-    }
-
-    savePendingOtpSession({
-      session,
-      email: email.trim(),
-      source: 'forgotpassword',
-    })
-    toast({ title: 'OTP sent', description: 'Use the code to continue recovery.', kind: 'success' })
-    navigate('/validateOtp', { replace: true })
-  }
+      toast({ title: 'OTP sent', description: 'Use the code to continue recovery.', kind: 'success' })
+      navigate('/validateOtp', { replace: true })
+    },
+  })
 
   return (
     <AuthShell
@@ -65,23 +75,28 @@ export function ForgotPasswordPage() {
         </p>
       }
     >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" onSubmit={formik.handleSubmit}>
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-white">Email</span>
           <input
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            name="email"
+            value={formik.values.email}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
             placeholder="owner@gscope.app"
-            className="w-full rounded-2xl border border-white/10 bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]"
+            className={`w-full rounded-2xl border ${formik.touched.email && formik.errors.email ? 'border-red-500' : 'border-white/10'} bg-[#09111d] px-4 py-4 text-white outline-none transition placeholder:text-slate-500 focus:border-[var(--accent)]`}
           />
+          {formik.touched.email && formik.errors.email ? (
+            <div className="mt-1 text-sm text-red-500">{String(formik.errors.email)}</div>
+          ) : null}
         </label>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={formik.isSubmitting}
           className="w-full rounded-2xl bg-[var(--accent)] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f] transition hover:-translate-y-0.5"
         >
-          {isSubmitting ? 'Sending...' : 'Send reset code'}
+          {formik.isSubmitting ? 'Sending...' : 'Send reset code'}
         </button>
       </form>
     </AuthShell>

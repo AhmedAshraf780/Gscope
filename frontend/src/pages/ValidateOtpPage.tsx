@@ -1,10 +1,11 @@
-import { useState, type ChangeEvent, type KeyboardEvent } from 'react'
+import { type ChangeEvent, type KeyboardEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getResponseMessage, isResponseSuccess } from '../auth/authStorage'
 import { useAuth } from '../auth/useAuth'
 import { AuthShell } from '../components/AuthShell'
 import { authService } from '../services/auth.service'
 import { useToast } from '../toast/useToast'
+import { useFormik } from 'formik'
 
 const OTP_LENGTH = 6
 
@@ -12,14 +13,69 @@ export function ValidateOtpPage() {
   const navigate = useNavigate()
   const { pendingOtpSession, clearOtpSession, savePendingOtpSession } = useAuth()
   const { toast } = useToast()
-  const [otp, setOtp] = useState(Array.from({ length: OTP_LENGTH }, () => ''))
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const formik = useFormik({
+    initialValues: {
+      otp: Array.from({ length: OTP_LENGTH }, () => ''),
+    },
+    onSubmit: async (values, { setSubmitting }) => {
+      if (!pendingOtpSession?.session) {
+        toast({
+          title: 'OTP validation failed',
+          description: 'Missing OTP session. Please sign up again.',
+          kind: 'error',
+        })
+        setSubmitting(false)
+        return
+      }
+
+      const code = values.otp.join('')
+      if (code.length !== OTP_LENGTH) {
+        toast({
+          title: 'OTP validation failed',
+          description: 'Enter the complete 6-digit code.',
+          kind: 'error',
+        })
+        setSubmitting(false)
+        return
+      }
+
+      const response = await authService.sendOTP(pendingOtpSession.session, code)
+      setSubmitting(false)
+
+      if (!response || !isResponseSuccess(response)) {
+        toast({
+          title: 'OTP validation failed',
+          description: getResponseMessage(response),
+          kind: 'error',
+        })
+        return
+      }
+
+      const email = pendingOtpSession.email
+      
+      if ((response as any).forgotPassword) {
+        savePendingOtpSession({
+          email,
+          session: (response as any).session,
+          source: 'forgotpassword',
+        })
+        toast({ title: 'OTP validated', description: 'Please update your password.', kind: 'success' })
+        navigate('/updatepassword', { replace: true })
+        return
+      }
+
+      clearOtpSession()
+      toast({ title: 'OTP validated', description: 'You can sign in now.', kind: 'success' })
+      navigate('/signin', { replace: true, state: { email } })
+    },
+  })
 
   const handleChange = (index: number, event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value.replace(/\D/g, '').slice(-1)
-    const next = [...otp]
+    const next = [...formik.values.otp]
     next[index] = value
-    setOtp(next)
+    formik.setFieldValue('otp', next)
 
     if (value && event.target.nextElementSibling instanceof HTMLInputElement) {
       event.target.nextElementSibling.focus()
@@ -29,64 +85,11 @@ export function ValidateOtpPage() {
   const handleKeyDown = (index: number, event: KeyboardEvent<HTMLInputElement>) => {
     if (
       event.key === 'Backspace' &&
-      !otp[index] &&
+      !formik.values.otp[index] &&
       event.currentTarget.previousElementSibling instanceof HTMLInputElement
     ) {
       event.currentTarget.previousElementSibling.focus()
     }
-  }
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (!pendingOtpSession?.session) {
-      toast({
-        title: 'OTP validation failed',
-        description: 'Missing OTP session. Please sign up again.',
-        kind: 'error',
-      })
-      return
-    }
-
-    const code = otp.join('')
-    if (code.length !== OTP_LENGTH) {
-      toast({
-        title: 'OTP validation failed',
-        description: 'Enter the complete 6-digit code.',
-        kind: 'error',
-      })
-      return
-    }
-
-    setIsSubmitting(true)
-    const response = await authService.sendOTP(pendingOtpSession.session, code)
-    setIsSubmitting(false)
-
-    if (!response || !isResponseSuccess(response)) {
-      toast({
-        title: 'OTP validation failed',
-        description: getResponseMessage(response),
-        kind: 'error',
-      })
-      return
-    }
-
-    const email = pendingOtpSession.email
-    
-    if ((response as any).forgotPassword) {
-      savePendingOtpSession({
-        email,
-        session: (response as any).session,
-        source: 'forgotpassword',
-      })
-      toast({ title: 'OTP validated', description: 'Please update your password.', kind: 'success' })
-      navigate('/restorepassword', { replace: true })
-      return
-    }
-
-    clearOtpSession()
-    toast({ title: 'OTP validated', description: 'You can sign in now.', kind: 'success' })
-    navigate('/signin', { replace: true, state: { email } })
   }
 
   return (
@@ -110,7 +113,7 @@ export function ValidateOtpPage() {
         </div>
       }
     >
-      <form className="space-y-6" onSubmit={handleSubmit}>
+      <form className="space-y-6" onSubmit={formik.handleSubmit}>
         <div>
           <span className="mb-2 block text-sm font-medium text-white">Verification code</span>
           {pendingOtpSession?.email ? (
@@ -119,7 +122,7 @@ export function ValidateOtpPage() {
             </p>
           ) : null}
           <div className="grid grid-cols-6 gap-3">
-            {otp.map((digit, index) => (
+            {formik.values.otp.map((digit, index) => (
               <input
                 key={index}
                 inputMode="numeric"
@@ -134,10 +137,10 @@ export function ValidateOtpPage() {
         </div>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={formik.isSubmitting}
           className="w-full rounded-2xl bg-[var(--accent)] px-5 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#08111f] transition hover:-translate-y-0.5"
         >
-          {isSubmitting ? 'Validating...' : 'Validate OTP'}
+          {formik.isSubmitting ? 'Validating...' : 'Validate OTP'}
         </button>
       </form>
     </AuthShell>

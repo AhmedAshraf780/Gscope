@@ -108,6 +108,7 @@ authRouter.post(
       });
     } catch (err) {
       console.log(err);
+      res.errorMsg = err instanceof Error ? err.message : String(err);
       return res
         .status(500)
         .json({ message: "Error saving user in redis", ok: false });
@@ -203,6 +204,7 @@ authRouter.post(
       });
     } catch (err) {
       console.log(err);
+      res.errorMsg = err instanceof Error ? err.message : String(err);
       return res
         .status(500)
         .json({ ok: false, message: "Error saving user in redis" });
@@ -281,6 +283,7 @@ authRouter.post(
       });
     } catch (err) {
       console.log(err);
+      res.errorMsg = err instanceof Error ? err.message : String(err);
       return res
         .status(500)
         .json({ ok: false, message: "Error saving user in redis" });
@@ -357,6 +360,7 @@ authRouter.post(
       return res.status(200).json({ ok: true, message: "Password changed" });
     } catch (err) {
       console.log(err);
+      res.errorMsg = err instanceof Error ? err.message : String(err);
       return res
         .status(500)
         .json({ ok: false, message: "Error saving user in redis" });
@@ -454,6 +458,7 @@ authRouter.post(
       });
     } catch (err) {
       console.log(err);
+      res.errorMsg = err instanceof Error ? err.message : String(err);
       return res
         .status(500)
         .json({ ok: false, message: "Error validating OTP" });
@@ -500,8 +505,14 @@ authRouter.post("/resendotp", async (req, res) => {
     return res.status(200).json({ message: "OTP is resent" });
   } catch (err) {
     console.log(err);
+    res.errorMsg = err instanceof Error ? err.message : String(err);
     return res.status(500).json({ message: "Error resending OTP" });
   }
+
+
 });
 
+
 export default authRouter;
+
+

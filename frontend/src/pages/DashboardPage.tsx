@@ -1,12 +1,7 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  extractNestedRecord,
-} from "../auth/authStorage";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { extractNestedRecord } from "../auth/authStorage";
+
 import { memberService } from "../services/member.service";
 import { offersService } from "../services/offers.service";
 import { logService } from "../services/logs.service";
@@ -14,6 +9,7 @@ import { bankService } from "../services/bank.service";
 import { expensesService } from "../services/expenses.service";
 import { analysisService } from "../services/analysis.service";
 import { useAuth } from "../auth/useAuth";
+import { Sidebar } from "../components/dashboard/Sidebar";
 import { useToast } from "../toast/useToast";
 import {
   SubscriptionsPane,
@@ -107,16 +103,14 @@ const initialMembers: Member[] = [
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { auth, logout } = useAuth();
+  const { gymId, userName, logout } = useAuth();
   const { toast } = useToast();
-
-  const gymId = (auth?.raw as any)?.gym_id || 1;
 
   const [activePane, setActivePane] = useState<Pane>("subscriptions");
   const [members, setMembers] = useState(initialMembers);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bankMoney, setBankMoney] = useState<number | null>(null);
-  const [offers, setOffers] = useState<OfferOption[]>([]);
+  const [offers] = useState<OfferOption[]>([]);
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
   const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([]);
@@ -128,80 +122,30 @@ export function DashboardPage() {
     const response = await memberService.getMembers();
 
     const records = (() => {
-      if (Array.isArray(response)) {
-        return response;
-      }
-
+      if (Array.isArray(response)) return response;
       const nested = extractNestedRecord(response);
-      if (nested && Array.isArray(nested.members)) {
-        return nested.members;
-      }
-
-      if (
-        response &&
-        typeof response === "object" &&
-        Array.isArray((response as { members?: unknown }).members)
-      ) {
-        return (response as { members: unknown[] }).members;
-      }
-
-      if (
-        response &&
-        typeof response === "object" &&
-        Array.isArray((response as { data?: unknown }).data)
-      ) {
-        return (response as { data: unknown[] }).data;
-      }
-
+      if (nested && Array.isArray(nested.members)) return nested.members;
+      if (response && typeof response === "object" && Array.isArray((response as any).members)) return (response as any).members;
+      if (response && typeof response === "object" && Array.isArray((response as any).data)) return (response as any).data;
       return [];
     })();
 
     const nextMembers = records
-      .map((item, index) => {
-        if (!item || typeof item !== "object") {
-          return null;
-        }
-
+      .map((item: any, index: number) => {
+        if (!item || typeof item !== "object") return null;
         const candidate = item as Record<string, unknown>;
         return {
-          id:
-            typeof candidate.id === "string"
-              ? candidate.id
-              : typeof candidate.id === "number"
-                ? String(candidate.id)
-                : typeof candidate._id === "string"
-                  ? candidate._id
-                  : typeof candidate._id === "number"
-                    ? String(candidate._id)
-                    : `member-${index}`,
-          name: typeof candidate.name === "string" ? candidate.name : "",
-          phone: typeof candidate.phone === "string" ? candidate.phone : "",
-          months:
-            typeof candidate.months === "string"
-              ? candidate.months
-              : typeof candidate.months === "number"
-                ? String(candidate.months)
-                : "",
-          amount:
-            typeof candidate.amount === "string"
-              ? candidate.amount
-              : typeof candidate.amount === "number"
-                ? String(candidate.amount)
-                : typeof candidate.price === "string"
-                  ? candidate.price
-                  : typeof candidate.price === "number"
-                    ? String(candidate.price)
-                    : "",
-          startDate:
-            typeof candidate.start_date === "string"
-              ? candidate.start_date
-              : "",
-          endDate:
-            typeof candidate.end_date === "string" ? candidate.end_date : "",
-          notes: typeof candidate.notes === "string" ? candidate.notes : "",
+          id: candidate.id ?? candidate._id ?? `member-${index}`,
+          name: candidate.name ?? "",
+          phone: candidate.phone ?? "",
+          months: candidate.months ?? "",
+          amount: candidate.amount ?? candidate.price ?? "",
+          startDate: candidate.start_date ?? "",
+          endDate: candidate.end_date ?? "",
+          notes: candidate.notes ?? "",
         };
       })
-      .filter((item): item is ProfileMember => item !== null);
+      .filter(Boolean);
 
     setProfileMembers(nextMembers);
 
@@ -214,95 +158,14 @@ export function DashboardPage() {
     }
   }, [toast, gymId]);
 
-  useEffect(() => {
-    const loadOffers = async () => {
-      const response = await offersService.getOffers();
-
-      const records = (() => {
-        if (Array.isArray(response)) {
-          return response;
-        }
-
-        const nested = extractNestedRecord(response);
-        if (nested && Array.isArray(nested.offers)) {
-          return nested.offers;
-        }
-
-        if (
-          response &&
-          typeof response === "object" &&
-          Array.isArray((response as { offers?: unknown }).offers)
-        ) {
-          return (response as { offers: unknown[] }).offers;
-        }
-
-        if (
-          response &&
-          typeof response === "object" &&
-          Array.isArray((response as { data?: unknown }).data)
-        ) {
-          return (response as { data: unknown[] }).data;
-        }
-
-        return [];
-      })();
-
-      const nextOffers = records
-        .map((item) => {
-          if (!item || typeof item !== "object") {
-            return null;
-          }
-
-          const candidate = item as Record<string, unknown>;
-          const id =
-            candidate.id ??
-            candidate._id ??
-            candidate.offerId ??
-            candidate.value;
-          const name =
-            candidate.name ??
-            candidate.title ??
-            candidate.offerName ??
-            candidate.label;
-
-          if (typeof id !== "string" || typeof name !== "string") {
-            return null;
-          }
-
-          return { id, name };
-        })
-        .filter((item): item is OfferOption => item !== null);
-
-      setOffers(nextOffers);
-
-      if (!nextOffers.length) {
-        toast({
-          title: "Offers not loaded",
-          description: "No offers were returned from the backend.",
-          kind: "error",
-        });
-      }
-    };
-
-    void loadOffers();
-  }, [toast, gymId]);
-
   const loadAllOffers = useCallback(async () => {
     const response = await offersService.getOffers();
     if (response && Array.isArray(response)) {
       setAllOffers(response);
-    } else if (
-      response &&
-      typeof response === "object" &&
-      Array.isArray(response.offers)
-    ) {
-      setAllOffers(response.offers);
-    } else if (
-      response &&
-      typeof response === "object" &&
-      Array.isArray(response.data)
-    ) {
-      setAllOffers(response.data);
+    } else if (response && typeof response === "object" && Array.isArray((response as any).offers)) {
+      setAllOffers((response as any).offers);
+    } else if (response && typeof response === "object" && Array.isArray((response as any).data)) {
+      setAllOffers((response as any).data);
     }
   }, [gymId]);
 
@@ -310,18 +173,10 @@ export function DashboardPage() {
     const response = await offersService.getAvailableOffers();
     if (response && Array.isArray(response)) {
       setAvailableOffers(response);
-    } else if (
-      response &&
-      typeof response === "object" &&
-      Array.isArray(response.offers)
-    ) {
-      setAvailableOffers(response.offers);
-    } else if (
-      response &&
-      typeof response === "object" &&
-      Array.isArray(response.data)
-    ) {
-      setAvailableOffers(response.data);
+    } else if (response && typeof response === "object" && Array.isArray((response as any).offers)) {
+      setAvailableOffers((response as any).offers);
+    } else if (response && typeof response === "object" && Array.isArray((response as any).data)) {
+      setAvailableOffers((response as any).data);
     }
   }, [gymId]);
 
@@ -329,17 +184,9 @@ export function DashboardPage() {
     const data = await logService.getLogs();
     if (Array.isArray(data)) {
       setLogs(data);
-    } else if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as any).data)
-    ) {
+    } else if (data && typeof data === "object" && Array.isArray((data as any).data)) {
       setLogs((data as any).data);
-    } else if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as any).logs)
-    ) {
+    } else if (data && typeof data === "object" && Array.isArray((data as any).logs)) {
       setLogs((data as any).logs);
     }
   }, [gymId]);
@@ -355,17 +202,9 @@ export function DashboardPage() {
     const data = await memberService.getSessions();
     if (Array.isArray(data)) {
       setSessions(data);
-    } else if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as any).data)
-    ) {
+    } else if (data && typeof data === "object" && Array.isArray((data as any).data)) {
       setSessions((data as any).data);
-    } else if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as any).sessions)
-    ) {
+    } else if (data && typeof data === "object" && Array.isArray((data as any).sessions)) {
       setSessions((data as any).sessions);
     }
   }, [gymId]);
@@ -374,17 +213,9 @@ export function DashboardPage() {
     const data = await expensesService.getAllExpenses();
     if (Array.isArray(data)) {
       setExpenses(data);
-    } else if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as any).data)
-    ) {
+    } else if (data && typeof data === "object" && Array.isArray((data as any).data)) {
       setExpenses((data as any).data);
-    } else if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as any).expenses)
-    ) {
+    } else if (data && typeof data === "object" && Array.isArray((data as any).expenses)) {
       setExpenses((data as any).expenses);
     }
   }, [gymId]);
@@ -393,14 +224,22 @@ export function DashboardPage() {
     const data = await analysisService.getBasicAnalysis();
     if (data && typeof data === "object") {
       setAnalysis({
-        todayrevenue: data.todayrevenue ?? 0,
-        mothrevenue: data.mothrevenue ?? 0,
-        todaysessions: data.todaysessions ?? 0,
-        todayMembers: data.todayMembers ?? 0,
-        activeMembers: data.activeMembers ?? 0,
+        todayrevenue: (data as any).todayrevenue ?? 0,
+        mothrevenue: (data as any).mothrevenue ?? 0,
+        todaysessions: (data as any).todaysessions ?? 0,
+        todayMembers: (data as any).todayMembers ?? 0,
+        activeMembers: (data as any).activeMembers ?? 0,
+        memberslogedtoday: (data as any).memberslogedtoday ?? 0,
+        membersOfTheGym: (data as any).membersOfTheGym ?? 0,
+        membersExpiringSoon: (data as any).membersExpiringSoon ?? 0,
       });
     }
   }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/signin", { replace: true });
+  };
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -426,11 +265,6 @@ export function DashboardPage() {
     loadAnalysis,
   ]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/signin", { replace: true });
-  };
-
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-[var(--ink)]">
       <div className="pointer-events-none fixed inset-0 opacity-90">
@@ -447,53 +281,44 @@ export function DashboardPage() {
                 Owner dashboard
               </div>
               <h1 className="mt-4 font-display text-3xl text-white sm:text-4xl xl:text-[3.35rem]">
-                Welcome, {(auth?.raw as any)?.name || "Gym"}!
+                Welcome, {userName || "Gym"}!
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)] sm:text-base">
-                Manage subscriptions, profiles, logs, and analytics with the
-                same system your front desk and staff rely on every day.
+                Manage subscriptions, profiles, logs, and analytics with the same system your front desk and staff rely on every day.
               </p>
               {analysis && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      Today Revenue
-                    </p>
-                    <p className="mt-2 font-display text-xl text-emerald-400">
-                      ${analysis.todayrevenue}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Today Revenue</p>
+                    <p className="mt-2 font-display text-xl text-emerald-400">${analysis.todayrevenue}</p>
                   </article>
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      Month Revenue
-                    </p>
-                    <p className="mt-2 font-display text-xl text-emerald-400">
-                      ${analysis.mothrevenue}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Month Revenue</p>
+                    <p className="mt-2 font-display text-xl text-emerald-400">${analysis.mothrevenue}</p>
                   </article>
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      Today Sessions
-                    </p>
-                    <p className="mt-2 font-display text-xl text-white">
-                      {analysis.todaysessions}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Today Sessions</p>
+                    <p className="mt-2 font-display text-xl text-white">{analysis.todaysessions}</p>
                   </article>
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      Today Members
-                    </p>
-                    <p className="mt-2 font-display text-xl text-white">
-                      {analysis.todayMembers}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Today Members</p>
+                    <p className="mt-2 font-display text-xl text-white">{analysis.todayMembers}</p>
                   </article>
                   <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
-                      Active Members
-                    </p>
-                    <p className="mt-2 font-display text-xl text-emerald-400">
-                      {analysis.activeMembers}
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Active Members</p>
+                    <p className="mt-2 font-display text-xl text-emerald-400">{analysis.activeMembers}</p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Members Logged Today</p>
+                    <p className="mt-2 font-display text-xl text-white">{analysis.memberslogedtoday}</p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Total Gym Members</p>
+                    <p className="mt-2 font-display text-xl text-white">{analysis.membersOfTheGym}</p>
+                  </article>
+                  <article className="rounded-xl border border-white/10 bg-[#09111d] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">Expiring Soon</p>
+                    <p className="mt-2 font-display text-xl text-amber-400">{analysis.membersExpiringSoon}</p>
                   </article>
                 </div>
               )}
@@ -507,36 +332,13 @@ export function DashboardPage() {
               >
                 Sign out
               </button>
-              <Link
-                to="/"
-                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"
-              >
-                View landing
-              </Link>
+
             </div>
           </div>
         </header>
 
         <section className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-3">
-            <nav className="grid gap-2 xl:sticky xl:top-4">
-              {panes.map((pane) => (
-                <button
-                  key={pane}
-                  type="button"
-                  onClick={() => setActivePane(pane)}
-                  className={[
-                    "w-full rounded-2xl px-4 py-3 text-left text-sm font-medium capitalize transition",
-                    activePane === pane
-                      ? "bg-[var(--accent)] text-[#08111f]"
-                      : "bg-[#09111d] text-[var(--muted)] hover:text-white",
-                  ].join(" ")}
-                >
-                  {pane}
-                </button>
-              ))}
-            </nav>
-          </aside>
+          <Sidebar activePane={activePane} setActivePane={setActivePane} />
 
           <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-4 sm:p-5">
             {activePane === "subscriptions" && (
@@ -559,7 +361,7 @@ export function DashboardPage() {
               <LogsPane logs={logs} profileMembers={profileMembers} />
             )}
             {activePane === "analytics" && (
-              <AnalyticsPane analysis={analysis} />
+              <AnalyticsPane />
             )}
             {activePane === "bank" && <BankPane bankMoney={bankMoney} />}
             {activePane === "offers" && (
