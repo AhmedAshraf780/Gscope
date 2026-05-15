@@ -1,12 +1,16 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import { DashboardPage } from './pages/DashboardPage'
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
-import { LandingPage } from './pages/LandingPage'
-import { SignInPage } from './pages/SignInPage'
-import { SignUpPage } from './pages/SignUpPage'
-import { ValidateOtpPage } from './pages/ValidateOtpPage'
-import { UpdatePasswordPage } from './pages/UpdatePasswordPage'
-import { PendingOtpRoute, ProtectedRoute, PublicOnlyRoute } from './routes/RouteGuards'
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { DashboardPage } from "./pages/DashboardPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { LandingPage } from "./pages/LandingPage";
+import { SignInPage } from "./pages/SignInPage";
+import { SignUpPage } from "./pages/SignUpPage";
+import { ValidateOtpPage } from "./pages/ValidateOtpPage";
+import { UpdatePasswordPage } from "./pages/UpdatePasswordPage";
+import {
+  PendingOtpRoute,
+  ProtectedRoute,
+  PublicOnlyRoute,
+} from "./routes/RouteGuards";
 
 function App() {
   return (
@@ -27,7 +31,7 @@ function App() {
         </Route>
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

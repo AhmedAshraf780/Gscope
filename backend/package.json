@@ -42,6 +42,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6"
+    "@types/express": "^5.0.6",
+    "socraticode": "^1.7.2"
   }
 }

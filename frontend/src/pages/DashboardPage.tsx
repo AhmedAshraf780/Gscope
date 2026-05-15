@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/useAuth";
-import { useToast } from "../toast/useToast";
 import { extractNestedRecord } from "../auth/authStorage";
 
 import { memberService } from "../services/member.service";
@@ -10,16 +8,97 @@ import { logService } from "../services/logs.service";
 import { bankService } from "../services/bank.service";
 import { expensesService } from "../services/expenses.service";
 import { analysisService } from "../services/analysis.service";
+import { useAuth } from "../auth/useAuth";
+import { useToast } from "../toast/useToast";
+import {
+  SubscriptionsPane,
+  ProfilesPane,
+  LogsPane,
+  AnalyticsPane,
+  BankPane,
+  OffersPane,
+  ExpensesPane,
+} from "./dashboard";
+import type {
+  Member,
+  LogEntry,
+  SessionEntry,
+  ExpenseEntry,
+  BasicAnalysis,
+  OfferOption,
+  Offer,
+  ProfileMember,
+} from "./dashboard";
 
-import { Sidebar, type PaneType } from "../components/dashboard/Sidebar";
-import { SubscriptionsPane } from "../components/dashboard/SubscriptionsPane";
-import { ProfilesPane } from "../components/dashboard/ProfilesPane";
-import { LogsPane } from "../components/dashboard/LogsPane";
-import { AnalyticsPane } from "../components/dashboard/AnalyticsPane";
-import { BankPane } from "../components/dashboard/BankPane";
-import { OffersPane } from "../components/dashboard/OffersPane";
-import { ExpensesPane } from "../components/dashboard/ExpensesPane";
+const panes = [
+  "subscriptions",
+  "profiles",
+  "logs",
+  "analytics",
+  "bank",
+  "offers",
+  "expenses",
+] as const;
 
+type Pane = (typeof panes)[number];
+
+const initialMembers: Member[] = [
+  {
+    id: "MBR-1001",
+    name: "Omar Adel",
+    email: "omar.adel@gscope.app",
+    phone: "+20 101 200 3001",
+    plan: "Monthly Premium",
+    status: "Active",
+    sessionsLeft: 10,
+    joinedAt: "2026-03-03",
+    lastCheckIn: "2026-04-29 08:12",
+  },
+  {
+    id: "MBR-1002",
+    name: "Mariam Samy",
+    email: "mariam.samy@gscope.app",
+    phone: "+20 101 200 3002",
+    plan: "12 Sessions Pack",
+    status: "Active",
+    sessionsLeft: 4,
+    joinedAt: "2026-02-18",
+    lastCheckIn: "2026-04-29 10:47",
+  },
+  {
+    id: "MBR-1003",
+    name: "Youssef Tarek",
+    email: "youssef.tarek@gscope.app",
+    phone: "+20 101 200 3003",
+    plan: "Quarterly Strength",
+    status: "Paused",
+    sessionsLeft: 18,
+    joinedAt: "2026-01-21",
+    lastCheckIn: "2026-04-22 19:03",
+  },
+  {
+    id: "MBR-1004",
+    name: "Nadine Hossam",
+    email: "nadine.hossam@gscope.app",
+    phone: "+20 101 200 3004",
+    plan: "Monthly Standard",
+    status: "Expired",
+    sessionsLeft: 0,
+    joinedAt: "2025-12-09",
+    lastCheckIn: "2026-04-15 17:35",
+  },
+  {
+    id: "MBR-1005",
+    name: "Karim Essam",
+    email: "karim.essam@gscope.app",
+    phone: "+20 101 200 3005",
+    plan: "8 Sessions Boxing",
+    status: "Active",
+    sessionsLeft: 2,
+    joinedAt: "2026-04-02",
+    lastCheckIn: "2026-04-29 07:55",
+  },
+];
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -28,17 +107,17 @@ export function DashboardPage() {
 
   const gymId = (auth?.raw as any)?.gym_id || null;
 
-  const [activePane, setActivePane] = useState<PaneType>("subscriptions");
-
-  // Data states
-  const [profileMembers, setProfileMembers] = useState<any[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
-  const [allOffers, setAllOffers] = useState<any[]>([]);
-  const [availableOffers, setAvailableOffers] = useState<any[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [activePane, setActivePane] = useState<Pane>("subscriptions");
+  const [members, setMembers] = useState(initialMembers);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bankMoney, setBankMoney] = useState<number | null>(null);
-  const [analysis, setAnalysis] = useState<any | null>(null);
+  const [offers, setOffers] = useState<OfferOption[]>([]);
+  const [allOffers, setAllOffers] = useState<Offer[]>([]);
+  const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
+  const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([]);
+  const [sessions, setSessions] = useState<SessionEntry[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseEntry[]>([]);
+  const [analysis, setAnalysis] = useState<BasicAnalysis | null>(null);
 
   const loadProfileMembers = useCallback(async () => {
     const response = await memberService.getMembers();
@@ -158,12 +237,6 @@ export function DashboardPage() {
     }
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/signin", { replace: true });
-
-  };
-
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadProfileMembers();
@@ -268,39 +341,30 @@ export function DashboardPage() {
         <section className="mt-4 grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <Sidebar activePane={activePane} setActivePane={setActivePane} />
 
-          <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-4 sm:p-6 lg:p-8 backdrop-blur-md">
+          <div className="rounded-[1.75rem] border border-[var(--line)] bg-white/5 p-4 sm:p-5">
             {activePane === "subscriptions" && (
               <SubscriptionsPane
+                offers={offers}
                 availableOffers={availableOffers}
-                onCheckInSuccess={loadLogs}
-                onMemberAdded={async () => {
-                  await loadProfileMembers();
-                  await loadSessions();
-                }}
-                onMemberUpdated={loadProfileMembers}
+                members={members}
+                setMembers={setMembers}
+                loadProfileMembers={loadProfileMembers}
               />
             )}
-
             {activePane === "profiles" && (
               <ProfilesPane
-                members={profileMembers}
-                sessions={sessions}
-                onMemberUpdated={loadProfileMembers}
-              />
-            )}
-
-            {activePane === "logs" && (
-              <LogsPane
-                logs={logs}
                 profileMembers={profileMembers}
-                loadLogs={loadLogs}
+                sessions={sessions}
+                loadProfileMembers={loadProfileMembers}
               />
             )}
-
-            {activePane === "analytics" && <AnalyticsPane />}
-
+            {activePane === "logs" && (
+              <LogsPane logs={logs} profileMembers={profileMembers} />
+            )}
+            {activePane === "analytics" && (
+              <AnalyticsPane analysis={analysis} />
+            )}
             {activePane === "bank" && <BankPane bankMoney={bankMoney} />}
-
             {activePane === "offers" && (
               <OffersPane
                 allOffers={allOffers}
@@ -309,12 +373,8 @@ export function DashboardPage() {
                 loadAvailableOffers={loadAvailableOffers}
               />
             )}
-
             {activePane === "expenses" && (
-              <ExpensesPane
-                expenses={expenses}
-                loadExpenses={loadExpenses}
-              />
+              <ExpensesPane expenses={expenses} loadExpenses={loadExpenses} />
             )}
           </div>
         </section>
