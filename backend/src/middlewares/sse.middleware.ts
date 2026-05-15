@@ -1,8 +1,12 @@
 import { NextFunction, Request, Response } from "express";
 import { clients } from "..";
 
-export const sseMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  const url = req.originalUrl
+export const sseMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const url = req.originalUrl;
   if (url.startsWith("/events") || url.startsWith("/monitor")) {
     return next();
   }
@@ -15,9 +19,11 @@ export const sseMiddleware = (req: Request, res: Response, next: NextFunction) =
       method: req.method,
       url: req.originalUrl,
       status: res.statusCode,
+      errorMsg: res.errorMsg,
+      requestId: req.gym_id,
       duration,
       time: new Date().toISOString(),
-    }
+    };
 
     const data = `data: ${JSON.stringify(event)}\n\n`;
 
@@ -26,4 +32,4 @@ export const sseMiddleware = (req: Request, res: Response, next: NextFunction) =
     }
   });
   next();
-}
+};

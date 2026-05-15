@@ -74,6 +74,7 @@ export const addMember = async (req: Request, res: Response) => {
     return res.status(201).json({ message: "Member added successfully" });
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -104,6 +105,7 @@ export const deleteMember = async (req: Request, res: Response) => {
     return res.status(200).json({ message: "Member deleted successfully" });
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -152,6 +154,7 @@ export const updateMember = async (req: Request, res: Response) => {
     return res.status(200).json({ message: "Member updated successfully" });
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -182,6 +185,7 @@ export const getMemberById = async (req: Request, res: Response) => {
     return res.status(200).json({ member });
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -207,6 +211,7 @@ export const getMemberByName = async (req: Request, res: Response) => {
     return res.status(200).json(member);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -229,6 +234,7 @@ export const listMembersOfGym = async (req: Request, res: Response) => {
     return res.status(200).json(members);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -283,6 +289,7 @@ export const addSession = async (req: Request, res: Response) => {
     return res.status(200).json({ message: "Session added successfully" });
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -311,6 +318,7 @@ export const listSessions = async (req: Request, res: Response) => {
     return res.status(200).json(sessions);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

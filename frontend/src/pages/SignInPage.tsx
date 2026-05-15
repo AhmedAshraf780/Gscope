@@ -9,7 +9,7 @@ import { useFormik } from 'formik'
 export function SignInPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { setAuthenticatedFromResponse } = useAuth()
+  const { login } = useAuth()
   const { toast } = useToast()
 
   const formik = useFormik({

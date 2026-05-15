@@ -12,6 +12,7 @@ export const getCompanyById = async (req: Request, res: Response) => {
     }
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -21,6 +22,7 @@ export const getAllCompanies = async (_req: Request, res: Response) => {
     res.status(200).json(companies);
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -40,6 +42,7 @@ export const updateCompany = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Company updated successfully" });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
@@ -50,6 +53,7 @@ export const deleteCompanyById = async (_req: Request, res: Response) => {
     res.status(200).json({ message: "Company deleted successfully" });
   } catch (error) {
     console.error(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

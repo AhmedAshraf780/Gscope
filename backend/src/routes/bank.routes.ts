@@ -46,6 +46,7 @@ bankRouter.get("/", async (req: Request, res: Response) => {
     res.status(200).json({ money });
   } catch (e) {
     console.log(e);
+    res.errorMsg = e instanceof Error ? e.message : String(e);
     res.status(500).json({ message: "Internal server error" });
   }
 });

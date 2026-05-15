@@ -6,42 +6,36 @@ import {
 import { AuthContext, type AuthContextValue } from './authContext'
 import {
   clearPendingOtpSession,
-  clearStoredAuth,
+  clearUserCache,
   getPendingOtpSession,
-  getResponseToken,
-  getResponseUser,
-  getStoredAuth,
+  getUserCache,
   setPendingOtpSession,
-  setStoredAuth,
+  setUserCache,
   type PendingOtpSession,
-  type StoredAuth,
 } from './authStorage'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [auth, setAuth] = useState<StoredAuth | null>(() => getStoredAuth())
+  const [user, setUser] = useState<{ gymId: number; name: string } | null>(() => {
+    const cached = getUserCache()
+    return cached ? { gymId: cached.gym_id, name: cached.name } : null
+  })
   const [pendingOtpSession, setPendingOtpState] = useState<PendingOtpSession | null>(() =>
     getPendingOtpSession(),
   )
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      auth,
+      isAuthenticated: user !== null,
+      gymId: user?.gymId ?? null,
+      userName: user?.name ?? null,
       pendingOtpSession,
-      isAuthenticated: Boolean(auth?.isAuthenticated),
-      setAuthenticatedFromResponse: (payload) => {
-        const nextAuth: StoredAuth = {
-          isAuthenticated: true,
-          token: getResponseToken(payload),
-          user: getResponseUser(payload),
-          raw: payload,
-        }
-
-        setAuth(nextAuth)
-        setStoredAuth(nextAuth)
+      login: (u) => {
+        setUser({ gymId: u.gym_id, name: u.name })
+        setUserCache({ gym_id: u.gym_id, name: u.name })
       },
       logout: () => {
-        setAuth(null)
-        clearStoredAuth()
+        setUser(null)
+        clearUserCache()
       },
       savePendingOtpSession: (payload) => {
         setPendingOtpState(payload)
@@ -52,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearPendingOtpSession()
       },
     }),
-    [auth, pendingOtpSession],
+    [user, pendingOtpSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

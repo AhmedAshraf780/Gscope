@@ -102,10 +102,8 @@ const initialMembers: Member[] = [
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { auth, logout } = useAuth();
+  const { gymId, userName, logout } = useAuth();
   const { toast } = useToast();
-
-  const gymId = (auth?.raw as any)?.gym_id || null;
 
   const [activePane, setActivePane] = useState<Pane>("subscriptions");
   const [members, setMembers] = useState(initialMembers);
@@ -277,7 +275,7 @@ export function DashboardPage() {
                 Owner dashboard
               </div>
               <h1 className="mt-4 font-display text-3xl text-white sm:text-4xl xl:text-[3.35rem]">
-                Welcome, {(auth?.raw as any)?.name || "Gym"}!
+                Welcome, {userName || "Gym"}!
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--muted)] sm:text-base">
                 Manage subscriptions, profiles, logs, and analytics with the same system your front desk and staff rely on every day.

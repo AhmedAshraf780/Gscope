@@ -28,6 +28,7 @@ export const createLog = async (req: Request, res: Response) => {
     return res.status(200).json({ message: "Log created successfully" });
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -57,6 +58,7 @@ export const getLogsByMemberId = async (req: Request, res: Response) => {
     return res.status(200).json(logs);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -83,6 +85,7 @@ export const getLastCheckIn = async (req: Request, res: Response) => {
     return res.status(200).json(logs);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -115,6 +118,7 @@ export const getLastAttendanceWithDuration = async (
     return res.status(200).json(logs);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -136,6 +140,7 @@ export const getAllLogsByGym = async (req: Request, res: Response) => {
     return res.status(200).json(logs);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

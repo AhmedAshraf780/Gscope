@@ -4,7 +4,7 @@ export const authService = {
     try {
       const res = await fetch(`${server}/api/v1/auth/signin`, {
         method: "POST",
-        credentials: 'include',
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -20,7 +20,12 @@ export const authService = {
     }
   },
 
-  signup: async (email: string, password: string, phone: string, name: string) => {
+  signup: async (
+    email: string,
+    password: string,
+    phone: string,
+    name: string,
+  ) => {
     try {
       const res = await fetch(`${server}/api/v1/auth/signup`, {
         method: "POST",
@@ -77,7 +82,11 @@ export const authService = {
       console.log(error);
     }
   },
-  restorePassword: async (password: string, confirmPassword: string, session: string) => {
+  restorePassword: async (
+    password: string,
+    confirmPassword: string,
+    session: string,
+  ) => {
     try {
       const res = await fetch(`${server}/api/v1/auth/restorepassword`, {
         method: "POST",

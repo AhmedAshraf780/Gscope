@@ -1,17 +1,15 @@
-const AUTH_STORAGE_KEY = 'gscope.auth'
+const USER_CACHE_KEY = 'gscope.user'
 const OTP_STORAGE_KEY = 'gscope.pending-otp'
-
-export type StoredAuth = {
-  isAuthenticated: boolean
-  token: string | null
-  user: unknown | null
-  raw: unknown
-}
 
 export type PendingOtpSession = {
   session: string
   email: string
   source: 'signup' | 'forgotpassword'
+}
+
+export type UserCache = {
+  gym_id: number
+  name: string
 }
 
 type UnknownRecord = Record<string, unknown>
@@ -128,9 +126,6 @@ export const getResponseMessage = (payload: unknown) =>
 export const getResponseSession = (payload: unknown) =>
   extractString(payload, ['session', 'sessionId', 'otpSession'])
 
-export const getResponseToken = (payload: unknown) =>
-  extractString(payload, ['token', 'accessToken', 'access_token', 'jwt'])
-
 export const getResponseUser = (payload: unknown) => {
   if (!isRecord(payload)) {
     return null
@@ -170,7 +165,6 @@ export const isResponseSuccess = (payload: unknown) => {
   }
 
   if (
-    getResponseToken(payload) ||
     getResponseSession(payload) ||
     extractNestedRecord(payload) !== null
   ) {
@@ -180,15 +174,15 @@ export const isResponseSuccess = (payload: unknown) => {
   return !extractString(payload, ['error', 'errors'])
 }
 
-export const getStoredAuth = () => readJson<StoredAuth>(AUTH_STORAGE_KEY)
+export const getUserCache = () => readJson<UserCache>(USER_CACHE_KEY)
 
-export const setStoredAuth = (auth: StoredAuth) => {
-  writeJson(AUTH_STORAGE_KEY, auth)
+export const setUserCache = (user: UserCache) => {
+  writeJson(USER_CACHE_KEY, user)
 }
 
-export const clearStoredAuth = () => {
+export const clearUserCache = () => {
   if (typeof window !== 'undefined') {
-    window.localStorage.removeItem(AUTH_STORAGE_KEY)
+    window.localStorage.removeItem(USER_CACHE_KEY)
   }
 }
 

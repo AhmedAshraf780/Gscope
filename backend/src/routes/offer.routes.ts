@@ -44,6 +44,7 @@ offerRouter.get("/", async (req: Request, res: Response) => {
     return res.status(200).json(offers);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -122,6 +123,7 @@ offerRouter.post("/", async (req: Request, res: Response) => {
       .json({ message: "Offer added successfully", offerId });
   } catch (e) {
     console.log(e);
+    res.errorMsg = e instanceof Error ? e.message : String(e);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -166,6 +168,7 @@ offerRouter.get("/available", async (req: Request, res: Response) => {
     return res.status(200).json(offers);
   } catch (error) {
     console.log(error);
+    res.errorMsg = error instanceof Error ? error.message : String(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 });
