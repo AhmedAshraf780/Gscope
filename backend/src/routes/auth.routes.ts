@@ -158,9 +158,6 @@ authRouter.post(
  *               phone:
  *                 type: string
  *                 example: "0111222333"
- *               address:
- *                 type: string
- *                 example: "123 Main St, Abrag Elmadina"
  *     responses:
  *       201:
  *         description: OTP sent to user's email
@@ -617,9 +614,6 @@ authRouter.post("/resendotp", async (req, res) => {
     res.errorMsg = err instanceof Error ? err.message : String(err);
     return res.status(500).json({ message: "Error resending OTP" });
   }
-
-
 });
-
 
 export default authRouter;

@@ -77,7 +77,13 @@ export const getMembersbyday = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Gym not found" });
     }
     const todayMembers = await db.getMembersbyday(Number(gym_id), date);
-    return res.status(200).json(todayMembers);
+    return res
+      .status(200)
+      .json({
+        members: todayMembers?.members,
+        total: todayMembers?.total,
+        message: "Members retrieved successfully",
+      });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });
@@ -528,7 +534,7 @@ export const getSessionsdayByType = async (req: Request, res: Response) => {
 export const getSessionsbymonth = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
-    const { month } = req.body;
+    const { month } = req.query;
 
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "gym id is required" });
