@@ -13,6 +13,8 @@ export type Member = {
 export type LogEntry = {
   id: number;
   member_id: number;
+  name: string;
+  phone: string;
   check_in_time: string;
   gym_id: number;
 };

@@ -362,7 +362,7 @@ export class SqlDataStore implements Datastore {
   async getAllLogsByGym(gym_id: number): Promise<attendance_logs[]> {
     try {
       return await this.db.all(
-        `SELECT * FROM attendance_logs WHERE gym_id = ?`,
+        `SELECT attendance_logs.*, members.name, members.phone FROM attendance_logs JOIN members ON attendance_logs.member_id = members.id WHERE attendance_logs.gym_id = ?`,
         [gym_id],
       );
     } catch (error) {

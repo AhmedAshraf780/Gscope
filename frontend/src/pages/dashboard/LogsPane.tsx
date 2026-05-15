@@ -164,9 +164,6 @@ export function LogsPane({ logs, profileMembers }: LogsPaneProps) {
             <tbody>
               {filteredLogs.length ? (
                 filteredLogs.map((log) => {
-                  const member = profileMembers.find(
-                    (m) => m.id === String(log.member_id),
-                  );
                   return (
                     <tr
                       key={log.id}
@@ -179,10 +176,10 @@ export function LogsPane({ logs, profileMembers }: LogsPaneProps) {
                         {log.member_id}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {member?.name || "Unknown"}
+                        {log?.name || "Unknown"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        {member?.phone || "Unknown"}
+                        {log?.phone || "Unknown"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {new Date(log.check_in_time).toLocaleString()}

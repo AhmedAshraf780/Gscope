@@ -1,6 +1,8 @@
 export interface attendance_logs {
     id?: number;
     member_id: number;
+    name?: string;
+    phone?: string;
     check_in_time: string;
 }
 
@@ -14,4 +16,5 @@ export interface LogsDao {
     getLastCheckIn(member_id: number): Promise<attendance_logs | null>;
     getLastAttendanceWithDuration(memberId: number): Promise<LastAttendance>;
     getAllLogsByGym(gym_id: number): Promise<attendance_logs[]>;
+
 }
