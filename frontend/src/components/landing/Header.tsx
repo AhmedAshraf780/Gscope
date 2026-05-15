@@ -32,12 +32,6 @@ export function Header() {
 
       <div className="hidden items-center gap-3 md:flex">
         <Link
-          to="/dashboard"
-          className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
-        >
-          Dashboard
-        </Link>
-        <Link
           to="/signin"
           className="rounded-full border border-[var(--line)] px-4 py-2 text-sm text-[var(--muted)] transition hover:border-white/30 hover:text-white"
         >

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { extractNestedRecord } from "../auth/authStorage";
 
 import { memberService } from "../services/member.service";
@@ -9,6 +9,7 @@ import { bankService } from "../services/bank.service";
 import { expensesService } from "../services/expenses.service";
 import { analysisService } from "../services/analysis.service";
 import { useAuth } from "../auth/useAuth";
+import { Sidebar } from "../components/dashboard/Sidebar";
 import { useToast } from "../toast/useToast";
 import {
   SubscriptionsPane,
@@ -109,7 +110,7 @@ export function DashboardPage() {
   const [members, setMembers] = useState(initialMembers);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [bankMoney, setBankMoney] = useState<number | null>(null);
-  const [offers, setOffers] = useState<OfferOption[]>([]);
+  const [offers] = useState<OfferOption[]>([]);
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
   const [profileMembers, setProfileMembers] = useState<ProfileMember[]>([]);
@@ -235,6 +236,11 @@ export function DashboardPage() {
     }
   }, []);
 
+  const handleLogout = () => {
+    logout();
+    navigate("/signin", { replace: true });
+  };
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       void loadProfileMembers();
@@ -326,12 +332,7 @@ export function DashboardPage() {
               >
                 Sign out
               </button>
-              <Link
-                to="/"
-                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[#08111f] transition hover:-translate-y-0.5"
-              >
-                View landing
-              </Link>
+
             </div>
           </div>
         </header>
@@ -360,7 +361,7 @@ export function DashboardPage() {
               <LogsPane logs={logs} profileMembers={profileMembers} />
             )}
             {activePane === "analytics" && (
-              <AnalyticsPane analysis={analysis} />
+              <AnalyticsPane />
             )}
             {activePane === "bank" && <BankPane bankMoney={bankMoney} />}
             {activePane === "offers" && (

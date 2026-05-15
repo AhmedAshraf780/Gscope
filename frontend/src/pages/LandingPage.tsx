@@ -3,10 +3,6 @@ import { gsap } from 'gsap'
 import '../App.css'
 import { Header } from '../components/landing/Header'
 import { HeroSection } from '../components/landing/HeroSection'
-import { FeaturesSection } from '../components/landing/FeaturesSection'
-import { WorkflowSection } from '../components/landing/WorkflowSection'
-import { PricingSection } from '../components/landing/PricingSection'
-import { CTASection } from '../components/landing/CTASection'
 
 export function LandingPage() {
   const pageRef = useRef<HTMLDivElement | null>(null)
@@ -78,10 +74,6 @@ export function LandingPage() {
           <HeroSection />
         </section>
 
-        <FeaturesSection />
-        <WorkflowSection />
-        <PricingSection />
-        <CTASection />
       </main>
     </div>
   )

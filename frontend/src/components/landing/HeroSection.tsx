@@ -48,12 +48,7 @@ export function HeroSection() {
           >
             Explore the system
           </a>
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center justify-center rounded-full border border-[var(--line)] bg-[#09111d] px-7 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--muted)] transition hover:border-white/30 hover:text-white"
-          >
-            View dashboard
-          </Link>
+
         </div>
 
         <div data-reveal="hero" className="mt-12 grid gap-4 sm:grid-cols-3">

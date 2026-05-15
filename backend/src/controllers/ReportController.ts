@@ -2,54 +2,11 @@ import { Request, Response } from "express";
 import { db } from "../database";
 
 export const getMembersbyday = async (req: Request, res: Response) => {
-    try {
-        const gym_id = req.gym_id;
-        const { date } = req.query;
-        if (!gym_id || isNaN(Number(gym_id))) {
-            return res.status(400).json({ message: "gym id is required" })
-        }
-        if (!date || typeof date !== 'string') {
-            return res.status(400).json({ message: "date is required" })
-        }
-
-        if (date.length !== 10) {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        if (date[4] !== '-' || date[7] !== '-') {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        const year = date.substring(0, 4);
-        const month = date.substring(5, 7);
-        const day = date.substring(8, 10);
-
-        for (let c of year + month + day) {
-            if (c < "0" || c > "9") {
-                return res.status(400).json({ message: "date must be only numbers" })
-            }
-        }
-
-        const monthnum = Number(month);
-        const daynum = Number(day);
-
-        if (monthnum < 1 || monthnum > 12) {
-            return res.status(400).json({ message: "invalid month" })
-        }
-
-        if (daynum < 1 || daynum > 31) {
-            return res.status(400).json({ message: "invalid day" })
-        }
-
-        const gym = db.getCompanyById(Number(gym_id));
-        if (!gym) {
-            return res.status(400).json({ message: "Gym not found" });
-        }
-        const todayMembers = await db.getMembersbyday(Number(gym_id), date);
-        return res.status(200).json(todayMembers);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal server error" });
+  try {
+    const gym_id = req.gym_id;
+    const { date } = req.query;
+    if (!gym_id || isNaN(Number(gym_id))) {
+      return res.status(400).json({ message: "gym id is required" });
     }
     if (!date || typeof date !== "string") {
       return res.status(400).json({ message: "date is required" });
@@ -96,53 +53,16 @@ export const getMembersbyday = async (req: Request, res: Response) => {
     return res.status(200).json(todayMembers);
   } catch (error) {
     console.log(error);
-    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
 export const getMembersbymonth = async (req: Request, res: Response) => {
-    try {
-        const gym_id = req.gym_id;
-        const { month } = req.query;
-        if (!gym_id || isNaN(Number(gym_id))) {
-            return res.status(400).json({ message: "gym id is required" })
-        }
-        if (!month || typeof month !== 'string') {
-            return res.status(400).json({ message: "month is required" })
-        }
-
-        if (month.length !== 7 || month[4] !== '-') {
-            return res.status(400).json({ message: "month must be in format YYYY-MM" })
-        }
-
-        const yearstr = month.substring(0, 4);
-        const monthstr = month.substring(5, 7);
-
-        for (let c of yearstr + monthstr) {
-            if (c < "0" || c > "9") {
-                return res.status(400).json({ message: "month must be only numbers" })
-            }
-        }
-
-        const monthnum = Number(monthstr);
-
-        if (monthnum < 1 || monthnum > 12) {
-            return res.status(400).json({ message: "invalid month" })
-        }
-
-
-        const gym = db.getCompanyById(Number(gym_id));
-        if (!gym) {
-            return res.status(400).json({ message: "Gym not found" });
-        }
-
-        const monthlyMembers = await db.getMembersbymonth(Number(gym_id), month);
-        return res.status(200).json(monthlyMembers);
-
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal server error" });
+  try {
+    const gym_id = req.gym_id;
+    const { month } = req.query;
+    if (!gym_id || isNaN(Number(gym_id))) {
+      return res.status(400).json({ message: "gym id is required" });
     }
     if (!month || typeof month !== "string") {
       return res.status(400).json({ message: "month is required" });
@@ -178,15 +98,14 @@ export const getMembersbymonth = async (req: Request, res: Response) => {
     return res.status(200).json(monthlyMembers);
   } catch (error) {
     console.log(error);
-    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
 export const getRevenuebymonth = async (req: Request, res: Response) => {
-    try {
-        const gym_id = req.gym_id;
-        const { month } = req.query;
+  try {
+    const gym_id = req.gym_id;
+    const { month } = req.query;
 
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "gym id is required" });
@@ -230,59 +149,11 @@ export const getRevenuebymonth = async (req: Request, res: Response) => {
 };
 
 export const getRevenuebyday = async (req: Request, res: Response) => {
-    try {
-
-        const gym_id = req.gym_id;
-        const { date } = req.query;
-        if (!gym_id || isNaN(Number(gym_id))) {
-            return res.status(400).json({ message: "gym id is required" })
-        }
-
-
-        if (!date || typeof date !== 'string') {
-            return res.status(400).json({ message: "date is required" })
-        }
-
-        if (date.length !== 10) {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        if (date[4] !== '-' || date[7] !== '-') {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        const year = date.substring(0, 4);
-        const month = date.substring(5, 7);
-        const day = date.substring(8, 10);
-
-        for (let c of year + month + day) {
-            if (c < "0" || c > "9") {
-                return res.status(400).json({ message: "date must be only numbers" })
-            }
-        }
-
-        const monthnum = Number(month);
-        const daynum = Number(day);
-
-        if (monthnum < 1 || monthnum > 12) {
-            return res.status(400).json({ message: "invalid month" })
-        }
-
-        if (daynum < 1 || daynum > 31) {
-            return res.status(400).json({ message: "invalid day" })
-        }
-
-        const gym = db.getCompanyById(Number(gym_id));
-        if (!gym) {
-            return res.status(400).json({ message: "Gym not found" });
-        }
-
-        const dayrevenue = await db.getRevenuebyday(Number(gym_id), date);
-        return res.status(200).json(dayrevenue);
-
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal server error" });
+  try {
+    const gym_id = req.gym_id;
+    const { date } = req.query;
+    if (!gym_id || isNaN(Number(gym_id))) {
+      return res.status(400).json({ message: "gym id is required" });
     }
 
     if (!date || typeof date !== "string") {
@@ -331,62 +202,16 @@ export const getRevenuebyday = async (req: Request, res: Response) => {
     return res.status(200).json(dayrevenue);
   } catch (error) {
     console.log(error);
-    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
 export const getSessionsbyday = async (req: Request, res: Response) => {
-    try {
-        const gym_id = req.gym_id;
-        const { date } = req.query;
-        if (!gym_id || isNaN(Number(gym_id))) {
-            return res.status(400).json({ message: "gym id is required" })
-        }
-
-
-        if (!date || typeof date !== 'string') {
-            return res.status(400).json({ message: "date is required" })
-        }
-
-        if (date.length !== 10) {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        if (date[4] !== '-' || date[7] !== '-') {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        const year = date.substring(0, 4);
-        const month = date.substring(5, 7);
-        const day = date.substring(8, 10);
-
-        for (let c of year + month + day) {
-            if (c < "0" || c > "9") {
-                return res.status(400).json({ message: "date must be only numbers" })
-            }
-        }
-
-        const monthnum = Number(month);
-        const daynum = Number(day);
-
-        if (monthnum < 1 || monthnum > 12) {
-            return res.status(400).json({ message: "invalid month" })
-        }
-
-        if (daynum < 1 || daynum > 31) {
-            return res.status(400).json({ message: "invalid day" })
-        }
-
-        const gym = db.getCompanyById(Number(gym_id));
-        if (!gym) {
-            return res.status(400).json({ message: "Gym not found" });
-        }
-        const todaySessions = await db.getSessionsbyday(Number(gym_id), date);
-        return res.status(200).json(todaySessions);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal server error" });
+  try {
+    const gym_id = req.gym_id;
+    const { date } = req.query;
+    if (!gym_id || isNaN(Number(gym_id))) {
+      return res.status(400).json({ message: "gym id is required" });
     }
 
     if (!date || typeof date !== "string") {
@@ -434,7 +259,6 @@ export const getSessionsbyday = async (req: Request, res: Response) => {
     return res.status(200).json(todaySessions);
   } catch (error) {
     console.log(error);
-    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -442,63 +266,16 @@ export const getSessionsbyday = async (req: Request, res: Response) => {
 export const getSessionsdayByType = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
-    const { date, session_type } = req.body;
+    const { date, session_type } = req.query;
 
-        const gym_id = req.gym_id;
-        const { date, session_type } = req.query;
-
-        if (!gym_id || isNaN(Number(gym_id))) {
-            return res.status(400).json({ message: "gym id is required" })
-        }
-        if (!session_type || typeof session_type !== 'string') {
-            return res.status(400).json({ message: "session_type is required" })
-        }
-        if (!date || typeof date !== 'string') {
-            return res.status(400).json({ message: "month is required" })
-        }
-
-        if (!["gym", "football", "else"].includes(session_type.toLowerCase())) {
-            return res.status(400).json({ message: "invalid session type" });
-        }
-        if (date.length !== 10) {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        if (date[4] !== '-' || date[7] !== '-') {
-            return res.status(400).json({ message: "date must be in format YYYY-MM-DD" })
-        }
-
-        const year = date.substring(0, 4);
-        const month = date.substring(5, 7);
-        const day = date.substring(8, 10);
-
-        for (let c of year + month + day) {
-            if (c < "0" || c > "9") {
-                return res.status(400).json({ message: "date must be only numbers" })
-            }
-        }
-
-        const monthnum = Number(month);
-        const daynum = Number(day);
-
-        if (monthnum < 1 || monthnum > 12) {
-            return res.status(400).json({ message: "invalid month" })
-        }
-
-        if (daynum < 1 || daynum > 31) {
-            return res.status(400).json({ message: "invalid day" })
-        }
-
-        const gym = db.getCompanyById(Number(gym_id));
-        if (!gym) {
-            return res.status(400).json({ message: "Gym not found" });
-        }
-        const DaySessionByType = await db.getSessionsdayByType(Number(gym_id), session_type.toLocaleLowerCase(), date);
-        return res.status(200).json(DaySessionByType);
-
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal server error" });
+    if (!gym_id || isNaN(Number(gym_id))) {
+      return res.status(400).json({ message: "gym id is required" });
+    }
+    if (!session_type || typeof session_type !== "string") {
+      return res.status(400).json({ message: "session_type is required" });
+    }
+    if (!date || typeof date !== "string") {
+      return res.status(400).json({ message: "month is required" });
     }
 
     if (!["gym", "football", "else"].includes(session_type.toLowerCase())) {
@@ -549,7 +326,6 @@ export const getSessionsdayByType = async (req: Request, res: Response) => {
     return res.status(200).json(DaySessionByType);
   } catch (error) {
     console.log(error);
-    res.errorMsg = error instanceof Error ? error.message : String(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };

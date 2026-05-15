@@ -38,7 +38,7 @@ export function SignInPage() {
         return
       }
 
-      setAuthenticatedFromResponse(response)
+      login({ gym_id: response.gym_id, name: response.name })
       toast({ title: 'Signed in', description: 'Welcome back.', kind: 'success' })
       const from = typeof location.state?.from === 'string' ? location.state.from : '/dashboard'
       navigate(from, { replace: true })
