@@ -4,10 +4,17 @@ import { MemberDao } from "./DAOs/memberDao";
 import { LogsDao } from "./DAOs/logsDao";
 import { BankDao } from "./DAOs/bankDao";
 import { OfferDao } from "./DAOs/offerDao";
-import { ReportDao } from './DAOs/reportDao';
+import { ReportDao } from "./DAOs/reportDao";
 import { ExpensesDao } from "./DAOs/expensesDao";
 export interface Datastore
-  extends CompanyDao, MemberDao, LogsDao, ReportDao, BankDao, OfferDao, ExpensesDao { }
+  extends
+    CompanyDao,
+    MemberDao,
+    LogsDao,
+    ReportDao,
+    BankDao,
+    OfferDao,
+    ExpensesDao {}
 
 export let db: Datastore;
 

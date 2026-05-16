@@ -10,10 +10,10 @@ export const addMember = async (req: Request, res: Response) => {
     if (!name || !phone || !months || !price || !gym_id) {
       return res.status(400).json({ message: "All fields are required" });
     }
-
     if (price < 0 || months < 0) {
       return res
         .status(400)
+
         .json({ message: "Price and months must be positive" });
     }
 
