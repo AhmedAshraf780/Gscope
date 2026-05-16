@@ -45,7 +45,7 @@ export const memberService = {
     }
   },
 
-  updateMember: async (id: number, months: number, amount: number) => {
+  updateMember: async (id: number, months: number, amount: number, exchange: number = 0) => {
     try {
       const res = await fetch(`${server}/api/v1/members/${id}`, {
         method: "PUT",
@@ -56,6 +56,7 @@ export const memberService = {
         body: JSON.stringify({
           months,
           price: amount,
+          exchange,
         }),
       });
       const data = await res.json();

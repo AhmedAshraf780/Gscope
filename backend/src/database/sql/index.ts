@@ -218,10 +218,17 @@ export class SqlDataStore implements Datastore {
     price: number,
   ): Promise<boolean> {
     try {
+      // const now = new Date();
+
+      // member.start_date = formatDate(now);
+
+      // const endDate = new Date(now);
+      // endDate.setMonth(endDate.getMonth() + member.months);
+      // member.end_date = formatDate(endDate);
+
       const now = new Date();
 
-      const formatDate = (date: Date) =>
-        `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 
       const start_date = formatDate(now);
 
@@ -850,10 +857,12 @@ export class SqlDataStore implements Datastore {
 
   async getExpenseById(id: number, gym_id: number): Promise<Expense | null> {
     try {
-      return (await this.db.get(
-        `SELECT * FROM expenses WHERE id = ? AND gym_id = ?`,
-        [id, gym_id],
-      )) ?? null;
+      return (
+        (await this.db.get(
+          `SELECT * FROM expenses WHERE id = ? AND gym_id = ?`,
+          [id, gym_id],
+        )) ?? null
+      );
     } catch (e) {
       console.log(e);
       return null;

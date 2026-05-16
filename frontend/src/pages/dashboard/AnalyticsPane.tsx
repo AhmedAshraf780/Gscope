@@ -198,6 +198,96 @@ export function AnalyticsPane() {
           </div>
         </div>
       </div>
+
+      {data?.revenue?.members?.length > 0 && (
+        <section className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6">
+          <h3 className="mb-4 font-display text-xl text-white">
+            Members Revenue Breakdown
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-[var(--sand)]">
+                <tr>
+                  <th className="px-4 py-3 font-medium">ID</th>
+                  <th className="px-4 py-3 font-medium">Name</th>
+                  <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Months</th>
+                  <th className="px-4 py-3 font-medium">Price</th>
+                  <th className="px-4 py-3 font-medium">Start Date</th>
+                  <th className="px-4 py-3 font-medium">End Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.revenue.members.map((m: any) => (
+                  <tr
+                    key={m.id}
+                    className="border-t border-white/8 text-[var(--muted)]"
+                  >
+                    <td className="px-4 py-3 text-white">{m.id}</td>
+                    <td className="px-4 py-3">{m.name}</td>
+                    <td className="px-4 py-3">{m.phone}</td>
+                    <td className="px-4 py-3">{m.months}</td>
+                    <td className="px-4 py-3 text-emerald-400">
+                      ${m.price}
+                    </td>
+                    <td className="px-4 py-3">{m.start_date}</td>
+                    <td className="px-4 py-3">{m.end_date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {data?.revenue?.sessions?.length > 0 && (
+        <section className="rounded-[1.75rem] border border-white/10 bg-[#09111d] p-6">
+          <h3 className="mb-4 font-display text-xl text-white">
+            Sessions Revenue Breakdown
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-[var(--sand)]">
+                <tr>
+                  <th className="px-4 py-3 font-medium">ID</th>
+                  <th className="px-4 py-3 font-medium">Member</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Price</th>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.revenue.sessions.map((s: any) => (
+                  <tr
+                    key={s.id}
+                    className="border-t border-white/8 text-[var(--muted)]"
+                  >
+                    <td className="px-4 py-3 text-white">{s.id}</td>
+                    <td className="px-4 py-3">{s.member_name}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          s.session_type === "gym"
+                            ? "bg-emerald-400/14 text-emerald-200"
+                            : s.session_type === "football"
+                              ? "bg-blue-400/14 text-blue-200"
+                              : "bg-amber-400/14 text-amber-200"
+                        }`}
+                      >
+                        {s.session_type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-emerald-400">
+                      ${s.price}
+                    </td>
+                    <td className="px-4 py-3">{s.session_date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </section>
   );
 }

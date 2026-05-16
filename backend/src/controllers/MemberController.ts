@@ -91,7 +91,7 @@ export const deleteMember = async (req: Request, res: Response) => {
 
 export const updateMember = async (req: Request, res: Response) => {
   try {
-    const { months, price } = req.body;
+    const { months, price, exchange } = req.body;
     const { id } = req.params;
     const gym_id = req.gym_id;
     if (!id || !months || !price) {
@@ -121,7 +121,8 @@ export const updateMember = async (req: Request, res: Response) => {
     if (!ok) {
       return res.status(500).json({ message: "Error updating member" });
     }
-    const bankOk = await db.updateBank(Number(gym_id), price);
+    const bankDelta = exchange !== undefined ? exchange : price;
+    const bankOk = await db.updateBank(Number(gym_id), bankDelta);
     if (!bankOk) {
       return res.status(500).json({ message: "Error updating bank account" });
     }

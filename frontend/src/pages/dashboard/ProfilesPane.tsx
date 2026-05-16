@@ -95,11 +95,16 @@ export function ProfilesPane({
       return;
     }
 
+    const newAmount = Number(editForm.amount) || 0;
+    const oldAmount = Number(editingMember.amount) || 0;
+    const exchange = newAmount - oldAmount;
+
     setIsUpdating(true);
     const response = await memberService.updateMember(
       id,
       Number(editForm.months) || 0,
-      Number(editForm.amount) || 0,
+      newAmount,
+      exchange,
     );
     setIsUpdating(false);
 
