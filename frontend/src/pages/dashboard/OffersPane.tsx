@@ -59,7 +59,7 @@ export function OffersPane({
     );
     setIsCreatingOffer(false);
 
-    if (response && (response.ok || response.id)) {
+    if (response && response.offerId) {
       toast({
         title: "Offer created",
         description: "The offer was saved successfully.",

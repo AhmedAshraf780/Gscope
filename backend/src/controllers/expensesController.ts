@@ -20,6 +20,7 @@ export const createExpense = async (req: Request, res: Response) => {
 
     const expense = await db.createExpense({
       title,
+      gym_id,
       amount,
       date,
       category,
@@ -50,7 +51,7 @@ export const getAllExpenses = async (_req: Request, res: Response) => {
     if (!gym) {
       return res.status(404).json({ message: "Gym not found" });
     }
-    const expenses = await db.getAllExpenses();
+    const expenses = await db.getAllExpenses(gym_id);
     res.status(200).json(expenses);
   } catch (error) {
     console.error(error);
@@ -70,7 +71,7 @@ export const getExpenseById = async (req: Request, res: Response) => {
     if (!gym) {
       return res.status(404).json({ message: "gym not found" });
     }
-    const expense = await db.getExpenseById(Number(id));
+    const expense = await db.getExpenseById(Number(id), Number(gym_id));
     if (!expense) {
       return res.status(404).json({ message: "expense not found" });
     }
@@ -98,6 +99,7 @@ export const updateExpense = async (req: Request, res: Response) => {
     const expense = await db.updateExpense({
       id: Number(id),
       title,
+      gym_id,
       amount,
       date,
       category,
@@ -147,7 +149,7 @@ export const getTotalExpenses = async (req: Request, res: Response) => {
     if (!gym) {
       return res.status(404).json({ message: "gym not found" });
     }
-    const total = await db.getTotalExpenses();
+    const total = await db.getTotalExpenses(gym_id);
     if (!total) {
       return res.status(404).json({ message: "expenses not found" });
     }
@@ -179,7 +181,7 @@ export const getTotalExpensesByDateRange = async (
         .status(400)
         .json({ message: "start and end dates are required" });
     }
-    const total = await db.getTotalByDateRange(start as string, end as string);
+    const total = await db.getTotalByDateRange(gym_id, start as string, end as string);
     if (!total) {
       return res.status(404).json({ message: "expenses not found" });
     }
@@ -207,7 +209,7 @@ export const getTotalByDateRange = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "start and end dates are required" });
     }
-    const total = await db.getTotalByDateRange(start as string, end as string);
+    const total = await db.getTotalByDateRange(gym_id, start as string, end as string);
     if (!total) {
       return res.status(404).json({ message: "expenses not found" });
     }
@@ -235,8 +237,8 @@ export const getTotalByCategory = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "start and end dates are required" });
     }
-    const total = await db.getTotalByCategory();
-    if (total) {
+    const total = await db.getTotalByCategory(gym_id);
+    if (!total) {
       return res.status(404).json({ message: "expenses not found" });
     }
     return res.status(200).json({ results: total });

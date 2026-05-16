@@ -46,8 +46,8 @@ app.use(
 
 app.use(
   limiter({
-    max: 100,
-    windowMs: 15 * 60 * 1000,
+    max: 200,
+    // windowMs: 15 * 60 * 1000,
   }),
 );
 // middleware (to read JSON)
