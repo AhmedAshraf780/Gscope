@@ -34,6 +34,7 @@ export const offersService = {
       });
 
       const data = await res.json();
+      window.location.reload();
       return data;
     } catch (error) {
       console.log(error);

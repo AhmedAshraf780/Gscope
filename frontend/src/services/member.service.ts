@@ -38,6 +38,7 @@ export const memberService = {
         }),
       });
       const data = await res.json();
+      window.location.reload();
       return data;
     } catch (error) {
       console.log(error);
@@ -58,6 +59,7 @@ export const memberService = {
         }),
       });
       const data = await res.json();
+      window.location.reload();
       return data;
     } catch (error) {
       console.log(error);
@@ -86,6 +88,7 @@ export const memberService = {
         }),
       });
       const data = await res.json();
+      window.location.reload();
       return data;
     } catch (error) {
       console.log(error);

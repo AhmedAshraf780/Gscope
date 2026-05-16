@@ -613,7 +613,7 @@ export const getSessionsbymonth = async (req: Request, res: Response) => {
 export const getSessionsMonthByType = async (req: Request, res: Response) => {
   try {
     const gym_id = req.gym_id;
-    const { month, session_type } = req.body;
+    const { month, session_type } = req.query;
 
     if (!gym_id || isNaN(Number(gym_id))) {
       return res.status(400).json({ message: "gym id is required" });

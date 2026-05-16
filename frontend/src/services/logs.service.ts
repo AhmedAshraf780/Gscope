@@ -19,6 +19,7 @@ export const logService = {
         credentials: "include",
       });
       const data = await res.json();
+      window.location.reload();
       return data;
     } catch (e) {
       console.log(e);

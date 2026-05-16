@@ -36,6 +36,7 @@ export const expensesService = {
         }),
       });
       const data = await response.json();
+      window.location.reload();
       return data;
     } catch (e) {
       console.log(e);
