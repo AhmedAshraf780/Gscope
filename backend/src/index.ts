@@ -82,7 +82,7 @@ app.get("/events", (req, res: Response) => {
 app.get("/", (_: Request, res: Response) => {
   try {
     (() => {
-      throw new Error("what the fuck you are doing");
+      throw new Error("what you are doing");
       res.json({ message: "Hello World!" });
     })();
   } catch (err) {
@@ -103,8 +103,6 @@ app.use("/api/v1/expenses", authMiddleware, expensesRouter);
 app.post("/api/v1/sessions", authMiddleware, addSession);
 app.get("/api/v1/sessions", authMiddleware, listSessions);
 
-export default app;
-
 if (process.env.NODE_ENV !== "test") {
   // start server
   app.listen(config.port, async () => {
@@ -113,3 +111,4 @@ if (process.env.NODE_ENV !== "test") {
     console.log(`Server running on http://localhost:${config.port}`);
   });
 }
+export default app;

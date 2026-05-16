@@ -13,7 +13,7 @@ export const sseMiddleware = (
 
   const start = Date.now();
   res.on("finish", () => {
-    const duration = Date.now() - start;
+    const duration = Date.now() - start; // 5ms
 
     const event = {
       method: req.method,
