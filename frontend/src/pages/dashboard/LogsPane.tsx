@@ -12,7 +12,7 @@ type LogsData = {
   logs?: LogEntry[];
 };
 
-export function LogsPane({ logs, profileMembers }: LogsPaneProps) {
+export function LogsPane({ logs }: LogsPaneProps) {
   const [logDate, setLogDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
